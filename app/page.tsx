@@ -1,18 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { actions, useStore } from "@/lib/store";
+import { api, lastPortal } from "@/lib/api";
+import { slugify } from "@/lib/phone";
+import type { Me } from "@/lib/types";
 
-export default function SignIn() {
-  const { drivers, session, ready } = useStore();
+export default function Home() {
   const router = useRouter();
-  const [driverId, setDriverId] = useState("d1");
+  const [code, setCode] = useState("");
 
+  // Already signed in, or used a portal on this device before: go straight there.
   useEffect(() => {
-    if (!ready || !session) return;
-    router.replace(session.role === "office" ? "/office" : "/run");
-  }, [ready, session, router]);
+    api<{ me: Me | null }>("/api/me")
+      .then(({ me }) => {
+        if (me) router.replace(me.role === "admin" ? "/office" : "/run");
+        else {
+          const slug = lastPortal();
+          if (slug) setCode(slug);
+        }
+      })
+      .catch(() => {});
+  }, [router]);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
@@ -24,44 +34,43 @@ export default function SignIn() {
         </div>
       </div>
 
-      <section className="card p-5">
-        <h2 className="font-semibold">I&apos;m a driver</h2>
-        <label className="label mt-3">Driver</label>
-        <select className="field" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
-          {drivers.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-        <button
-          className="btn-primary mt-4 w-full"
-          onClick={() => {
-            actions.signIn({ role: "driver", driverId });
-            router.push("/run");
-          }}
-        >
-          Start my run
+      <form
+        className="card p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const slug = slugify(code);
+          if (slug) router.push(`/c/${slug}`);
+        }}
+      >
+        <h2 className="font-semibold">Log in to your company</h2>
+        <label className="label mt-3" htmlFor="code">
+          Company portal
+        </label>
+        <div className="flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
+          <span className="pl-3 text-sm text-slate-400">/c/</span>
+          <input
+            id="code"
+            className="w-full rounded-xl bg-transparent px-1 py-2.5 text-[15px] outline-none"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="your-company"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+        </div>
+        <p className="mt-1 text-xs text-slate-500">Your office gives you this. Drivers log in with their mobile number.</p>
+        <button className="btn-primary mt-4 w-full" disabled={!slugify(code)}>
+          Continue
         </button>
-      </section>
+      </form>
 
-      <section className="card mt-4 p-5">
-        <h2 className="font-semibold">Office</h2>
-        <p className="mt-1 text-sm text-slate-500">Create jobs and assign them to drivers.</p>
-        <button
-          className="btn-ghost mt-4 w-full"
-          onClick={() => {
-            actions.signIn({ role: "office" });
-            router.push("/office");
-          }}
-        >
-          Open office board
-        </button>
-      </section>
-
-      <p className="mt-6 text-center text-xs text-slate-400">
-        Prototype: data is saved in this browser only. Real sign-in comes with the Supabase setup.
-      </p>
+      <div className="card mt-4 p-5">
+        <h2 className="font-semibold">New to RouteRun?</h2>
+        <p className="mt-1 text-sm text-slate-500">Set up your company, add drivers and vehicles, and start assigning jobs.</p>
+        <Link href="/signup" className="btn-ghost mt-4 w-full">
+          Create a company account
+        </Link>
+      </div>
     </main>
   );
 }

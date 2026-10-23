@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { currentUser } from "@/lib/server/auth";
 
 export const maxDuration = 60;
 
@@ -22,6 +23,7 @@ type ImageType = (typeof IMAGE_TYPES)[number];
 
 /** Reads a consignment note, delivery docket or PDF and returns job fields. */
 export async function POST(req: Request) {
+  if (!(await currentUser())) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
       { error: "Document reading is off. Add ANTHROPIC_API_KEY to turn it on.", demo: true },
