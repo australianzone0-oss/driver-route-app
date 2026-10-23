@@ -1,5 +1,6 @@
 /**
- * Postgres access. Uses DATABASE_URL (Supabase, Neon or any Postgres) when set;
+ * Postgres access. Uses DATABASE_URL, or POSTGRES_URL as set by the Supabase and
+ * Neon integrations for Vercel, when present;
  * otherwise an embedded Postgres (PGlite) stored on disk, for local development.
  */
 import { mkdirSync } from "node:fs";
@@ -13,9 +14,9 @@ type Db = { query: Query; transaction<R>(fn: (q: Query) => Promise<R>): Promise<
 const globalForDb = globalThis as unknown as { __db?: Promise<Db> };
 
 async function connect(): Promise<Db> {
-  if (process.env.DATABASE_URL) {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (url) {
     const postgres = (await import("postgres")).default;
-    const url = process.env.DATABASE_URL;
     // Hosted databases (Supabase, Neon) need SSL; a local Postgres usually doesn't.
     const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url) || /sslmode=disable/.test(url);
     const sql = postgres(url, { max: 5, prepare: false, ssl: local ? false : "require", onnotice: () => {} });

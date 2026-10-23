@@ -88,4 +88,14 @@ create table if not exists notices (
 create index if not exists jobs_company_driver on jobs (company_id, driver_id, status);
 create index if not exists stops_job on stops (job_id);
 create index if not exists notices_job on notices (job_id);
+
+-- The app talks to the database directly as its owner. Row level security with
+-- no policies stops Supabase's public Data API from reading these tables.
+alter table companies enable row level security;
+alter table vehicles enable row level security;
+alter table users enable row level security;
+alter table sessions enable row level security;
+alter table jobs enable row level security;
+alter table stops enable row level security;
+alter table notices enable row level security;
 `;
