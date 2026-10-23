@@ -33,6 +33,8 @@ export function readFields(fields: FieldSpec[], body: Record<string, unknown>, p
         value = n;
       } else if (f.type === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
         throw new HttpError(400, `${f.label} must be a date.`);
+      } else if (f.type === "time" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(value))) {
+        throw new HttpError(400, `${f.label} must be a time like 08:30.`);
       } else if (f.type === "select" && f.options && !f.options.some((o) => o.value === value)) {
         throw new HttpError(400, `Choose a valid ${f.label.toLowerCase()}.`);
       } else if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) {
@@ -110,6 +112,12 @@ export function member(table: string, fields: FieldSpec[], hooks: Omit<Hooks, "o
 }
 
 /** Throws unless the customer belongs to the company. */
+export async function checkDriver(companyId: string, driverId: unknown) {
+  if (!driverId) return;
+  const rows = await query("select 1 from users where id = $1 and company_id = $2 and role = 'driver'", [String(driverId), companyId]);
+  if (!rows.length) throw new HttpError(400, "That driver doesn't exist.");
+}
+
 export async function checkCustomer(companyId: string, customerId: unknown) {
   if (!customerId) return;
   const rows = await query("select 1 from customers where id = $1 and company_id = $2", [String(customerId), companyId]);

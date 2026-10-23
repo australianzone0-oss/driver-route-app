@@ -25,8 +25,10 @@ const REPORTS: Record<string, string> = {
            k.full_empty as "Full/empty", k.status as "Status", case when k.held then 'Yes' else '' end as "Held",
            c.name as "Customer", k.vessel as "Vessel", k.voyage as "Voyage",
            to_char(k.wharf_pickup_date, 'YYYY-MM-DD') as "Wharf pickup", to_char(k.wharf_dropoff_date, 'YYYY-MM-DD') as "Wharf drop-off",
-           to_char(k.dehire_date, 'YYYY-MM-DD') as "Dehire by", k.empty_park as "Empty park"
-      from containers k left join customers c on c.id = k.customer_id
+           to_char(k.dehire_date, 'YYYY-MM-DD') as "Dehire by", k.empty_park as "Empty park",
+           k.wharf as "Wharf", k.weight_kg as "Weight (kg)", k.door_direction as "Door", k.edo_pin as "EDO PIN",
+           to_char(k.job_date, 'YYYY-MM-DD') as "Job date", k.job_time as "Job time", d.name as "Driver"
+      from containers k left join customers c on c.id = k.customer_id left join users d on d.id = k.driver_id
      where k.company_id = $1 and (k.created_at at time zone 'Australia/Sydney')::date between $2 and $3
      order by k.created_at`,
   invoices: `

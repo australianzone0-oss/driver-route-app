@@ -11,6 +11,7 @@ export function RecordForm({
   fields,
   initial,
   customers = [],
+  drivers = [],
   submitLabel,
   onSubmit,
   extra,
@@ -18,6 +19,7 @@ export function RecordForm({
   fields: FieldSpec[];
   initial: Values | null;
   customers?: { id: string; name: string }[];
+  drivers?: { id: string; name: string }[];
   submitLabel: string;
   onSubmit: (values: Values) => Promise<void>;
   extra?: React.ReactNode;
@@ -67,7 +69,7 @@ export function RecordForm({
                   {f.label}
                   {f.required && " *"}
                 </label>
-                <Input f={f} id={`f-${f.key}`} value={String(values[f.key] ?? "")} onChange={(v) => set(f.key, v)} customers={customers} />
+                <Input f={f} id={`f-${f.key}`} value={String(values[f.key] ?? "")} onChange={(v) => set(f.key, v)} customers={customers} drivers={drivers} />
               </>
             )}
           </div>
@@ -88,12 +90,14 @@ function Input({
   value,
   onChange,
   customers,
+  drivers,
 }: {
   f: FieldSpec;
   id: string;
   value: string;
   onChange: (v: string) => void;
   customers: { id: string; name: string }[];
+  drivers: { id: string; name: string }[];
 }) {
   if (f.type === "address") return <AddressFields id={id} value={value} onChange={onChange} required={f.required} />;
   const common = { id, className: `field ${f.upper ? "font-mono uppercase" : ""}`, value, placeholder: f.placeholder, required: f.required };
@@ -115,6 +119,17 @@ function Input({
         {customers.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
+          </option>
+        ))}
+      </select>
+    );
+  if (f.type === "driver")
+    return (
+      <select {...common} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Not allocated</option>
+        {drivers.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.name}
           </option>
         ))}
       </select>

@@ -1,6 +1,6 @@
 import { checkContainerNumber } from "@/lib/records";
 import { HttpError } from "./auth";
-import { checkCustomer } from "./records";
+import { checkCustomer, checkDriver } from "./records";
 
 export async function validateContainer(v: Record<string, unknown>, companyId: string) {
   if (v.container_number !== undefined) {
@@ -8,4 +8,5 @@ export async function validateContainer(v: Record<string, unknown>, companyId: s
     if (problem) throw new HttpError(400, problem);
   }
   await checkCustomer(companyId, v.customer_id);
+  await checkDriver(companyId, v.driver_id);
 }
