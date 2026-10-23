@@ -55,6 +55,7 @@ export type SessionUser = {
   email: string | null;
   phone: string | null;
   vehicleId: string | null;
+  trailerId: string | null;
   companyId: string;
   companyName: string;
   companySlug: string;
@@ -64,7 +65,7 @@ export async function currentUser(): Promise<SessionUser | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const rows = await query<SessionUser>(
-    `select u.id, u.name, u.role, u.email, u.phone, u.vehicle_id as "vehicleId",
+    `select u.id, u.name, u.role, u.email, u.phone, u.vehicle_id as "vehicleId", u.trailer_id as "trailerId",
             c.id as "companyId", c.name as "companyName", c.slug as "companySlug"
        from sessions s
        join users u on u.id = s.user_id

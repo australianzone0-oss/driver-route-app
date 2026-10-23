@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { RigSelect } from "@/components/RigSelect";
 import { Modal } from "@/components/Modal";
 import { RESOURCE_TABS, SubTabs } from "@/components/SubTabs";
 import { api, useApi, useMe } from "@/lib/api";
@@ -76,6 +77,7 @@ function Drivers() {
                   <p className="text-sm text-slate-500">
                     {formatPhone(d.phone)}
                     {rego(d.vehicleId) && ` · 🚚 ${rego(d.vehicleId)}`}
+                    {rego(d.trailerId) && ` · 🚛 ${rego(d.trailerId)}`}
                     {d.licenceNumber && ` · Licence ${d.licenceNumber}`}
                   </p>
                 </div>
@@ -114,6 +116,7 @@ function DriverForm({ driver, vehicles, onClose, onSaved }: { driver: Driver | n
   const [name, setName] = useState(driver?.name ?? "");
   const [phone, setPhone] = useState(driver ? formatPhone(driver.phone) : "");
   const [vehicleId, setVehicleId] = useState(driver?.vehicleId ?? "");
+  const [trailerId, setTrailerId] = useState(driver?.trailerId ?? "");
   const [licence, setLicence] = useState(driver?.licenceNumber ?? "");
   const [active, setActive] = useState(driver?.active ?? true);
   const [pin, setPin] = useState(driver ? "" : newPin());
@@ -124,7 +127,7 @@ function DriverForm({ driver, vehicles, onClose, onSaved }: { driver: Driver | n
     e.preventDefault();
     setBusy(true);
     setError(undefined);
-    const body = { name, phone, vehicleId: vehicleId || null, licenceNumber: licence, ...(driver ? { active } : {}), ...(pin ? { pin } : {}) };
+    const body = { name, phone, vehicleId: vehicleId || null, trailerId: trailerId || null, licenceNumber: licence, ...(driver ? { active } : {}), ...(pin ? { pin } : {}) };
     try {
       const r = driver
         ? await api<{ driver: Driver }>(`/api/drivers/${driver.id}`, { method: "PATCH", body })
@@ -147,20 +150,16 @@ function DriverForm({ driver, vehicles, onClose, onSaved }: { driver: Driver | n
           <label className="label">Mobile number (their login)</label>
           <input className="field" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0412 345 678" required />
         </div>
-        <div>
-          <label className="label">Vehicle</label>
-          <select className="field" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-            <option value="">No vehicle</option>
-            {vehicles
-              .filter((v) => v.active || v.id === vehicleId)
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.rego}
-                  {v.description ? ` · ${v.description}` : ""}
-                </option>
-              ))}
-          </select>
-          {vehicles.length === 0 && <p className="mt-1 text-xs text-slate-500">Add vehicles in the Vehicles tab.</p>}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label" htmlFor="d-vehicle">Vehicle</label>
+            <RigSelect id="d-vehicle" kind="truck" vehicles={vehicles} value={vehicleId} onChange={setVehicleId} />
+          </div>
+          <div>
+            <label className="label" htmlFor="d-trailer">Trailer</label>
+            <RigSelect id="d-trailer" kind="trailer" vehicles={vehicles} value={trailerId} onChange={setTrailerId} />
+          </div>
+          {vehicles.length === 0 && <p className="col-span-2 -mt-2 text-xs text-slate-500">Add them in the Vehicles and Trailers tabs.</p>}
         </div>
         <div>
           <label className="label">Licence number</label>

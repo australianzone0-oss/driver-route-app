@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { CompleteSheet } from "@/components/CompleteSheet";
+import { MyRig } from "@/components/MyRig";
 import { distanceKm, formatKm, formatMinutes, googleMapsLink, wazeLink } from "@/lib/geo";
 import { planRun, type PlannedStop } from "@/lib/planner";
 import { api, useApi, useMe } from "@/lib/api";
-import type { Job, LatLng } from "@/lib/types";
+import type { Job, LatLng, Vehicle } from "@/lib/types";
 
 const RunMap = dynamic(() => import("@/components/RunMap"), { ssr: false, loading: () => <div className="h-full w-full bg-slate-200" /> });
 
@@ -25,6 +26,7 @@ export default function RunPage() {
   const [leg, setLeg] = useState<Leg | null>(null);
   const [completing, setCompleting] = useState<PlannedStop | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [myRig, setMyRig] = useState<{ vehicle: Vehicle | null; trailer: Vehicle | null } | null>(null);
 
   // Follow the driver's location, ignoring jitter under 50 m.
   useEffect(() => {
@@ -106,10 +108,11 @@ export default function RunPage() {
   }, [toast]);
 
   if (!me) return null;
+  const rig = myRig ?? { vehicle: me.vehicle, trailer: me.trailer };
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AppHeader me={me} title={`${me.name.split(" ")[0]}'s run${me.vehicle ? ` · ${me.vehicle.rego}` : ""}`} />
+      <AppHeader me={me} title={`${me.name.split(" ")[0]}'s run${rig.vehicle ? ` · ${rig.vehicle.rego}` : ""}`} />
 
       <div className="relative h-[38dvh] min-h-56 w-full">
         <RunMap plan={plan} here={start} nextLine={leg?.line ?? null} />
@@ -119,6 +122,7 @@ export default function RunPage() {
       </div>
 
       <main className="mx-auto w-full max-w-md flex-1 space-y-4 px-4 pb-28 pt-4">
+        <MyRig rig={rig} onChange={setMyRig} />
         {next ? (
           <section className="card overflow-hidden">
             <div className={`px-4 py-2 text-xs font-bold uppercase tracking-wider text-white ${next.stop.type === "pickup" ? "bg-amber-600" : "bg-brand-600"}`}>

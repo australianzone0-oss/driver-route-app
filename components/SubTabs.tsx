@@ -24,4 +24,5 @@ export function SubTabs({ tabs }: { tabs: { href: string; label: string }[] }) {
 export const RESOURCE_TABS = [
   { href: "/office/drivers", label: "Drivers" },
   { href: "/office/vehicles", label: "Vehicles" },
+  { href: "/office/trailers", label: "Trailers" },
 ];

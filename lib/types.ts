@@ -60,6 +60,7 @@ export type Vehicle = {
   vehicleType: string | null;
   capacity: string | null;
   notes: string | null;
+  kind: "truck" | "trailer";
   active: boolean;
 };
 
@@ -69,6 +70,7 @@ export type Driver = {
   phone: string;
   licenceNumber: string | null;
   vehicleId: string | null;
+  trailerId: string | null;
   active: boolean;
 };
 
@@ -79,5 +81,6 @@ export type Me = {
   email: string | null;
   phone: string | null;
   vehicle: Vehicle | null;
+  trailer: Vehicle | null;
   company: { name: string; slug: string };
 };

@@ -19,7 +19,7 @@ A simple app for transport companies, their office staff and their drivers:
 | Jobs | Every job, reassign drivers |
 | Customers | Customer accounts with default rate, payment terms and credit hold |
 | Containers | Container numbers (ISO 6346 check digit), wharf dates, holds, dehire dates |
-| Resources | Drivers and vehicles |
+| Resources | Drivers, vehicles and trailers. Drivers can also pick their own truck and trailer in the driver app. |
 | Finance | Invoice completed jobs per customer with GST, email or print invoices, mark paid |
 | Reports | Jobs, drivers, containers and invoices for a date range, as a table or CSV |
 | Tools | Container number check, GST calculator, distance and drive time, customer import |
@@ -64,7 +64,7 @@ Every outside service is optional. Without its key the app still works:
 
 - `lib/planner.ts`: nearest-next-stop ordering with pickup-before-drop-off.
 - `app/run/page.tsx`: driver screen. `app/office/page.tsx`: office board. `app/jobs/new/page.tsx`: add job.
-- `app/office/drivers`, `app/office/vehicles`: fleet management. `app/c/[slug]`: company login portal. `app/signup`: new company.
+- `app/office/drivers`, `app/office/vehicles`, `app/office/trailers`: fleet management. `app/c/[slug]`: company login portal. `app/signup`: new company.
 - `lib/server/schema.ts`: database tables (created automatically). `lib/server/auth.ts`: sessions, PIN and password hashing.
 - `app/api/extract`: reads documents with the Claude API. `lib/server/notify.ts`: email and SMS. `app/api/geocode`, `app/api/route`: maps.
 
