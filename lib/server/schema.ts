@@ -44,6 +44,13 @@ create table if not exists sessions (
   expires_at timestamptz not null
 );
 
+create table if not exists password_resets (
+  token_hash text primary key,
+  user_id uuid not null references users on delete cascade,
+  expires_at timestamptz not null,
+  used_at timestamptz
+);
+
 create table if not exists jobs (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references companies on delete cascade,
@@ -95,6 +102,7 @@ alter table companies enable row level security;
 alter table vehicles enable row level security;
 alter table users enable row level security;
 alter table sessions enable row level security;
+alter table password_resets enable row level security;
 alter table jobs enable row level security;
 alter table stops enable row level security;
 alter table notices enable row level security;

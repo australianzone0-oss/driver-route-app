@@ -36,10 +36,14 @@ export async function sendCompletionNotice(body: NoticeInput): Promise<Result[]>
   return results;
 }
 
-async function sendEmail(to: string, subject: string, text: string): Promise<Result> {
+export function emailConfigured() {
+  return Boolean(process.env.RESEND_API_KEY && process.env.NOTIFY_EMAIL_FROM);
+}
+
+export async function sendEmail(to: string, subject: string, text: string): Promise<Result> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.NOTIFY_EMAIL_FROM;
-  if (!key || !from) return { channel: "email", to, ok: true, demo: true };
+  if (!emailConfigured()) return { channel: "email", to, ok: true, demo: true };
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

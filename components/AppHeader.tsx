@@ -9,6 +9,7 @@ const officeTabs = [
   { href: "/office", label: "Jobs" },
   { href: "/office/drivers", label: "Drivers" },
   { href: "/office/vehicles", label: "Vehicles" },
+  { href: "/office/account", label: "Account" },
 ];
 
 export function AppHeader({ me, title, back }: { me: Me; title?: string; back?: string }) {

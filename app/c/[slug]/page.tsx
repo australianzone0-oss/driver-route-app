@@ -119,6 +119,9 @@ export default function Portal() {
             <div>
               <label className="label">Password</label>
               <input className="field" type="password" autoComplete="current-password" value={secret} onChange={(e) => setSecret(e.target.value)} required />
+              <Link href={`/c/${slug}/forgot`} className="mt-1 inline-block text-xs font-medium text-brand-600">
+                Forgot password?
+              </Link>
             </div>
           </>
         )}
