@@ -15,7 +15,10 @@ const globalForDb = globalThis as unknown as { __db?: Promise<Db> };
 async function connect(): Promise<Db> {
   if (process.env.DATABASE_URL) {
     const postgres = (await import("postgres")).default;
-    const sql = postgres(process.env.DATABASE_URL, { max: 5, prepare: false, onnotice: () => {} });
+    const url = process.env.DATABASE_URL;
+    // Hosted databases (Supabase, Neon) need SSL; a local Postgres usually doesn't.
+    const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url) || /sslmode=disable/.test(url);
+    const sql = postgres(url, { max: 5, prepare: false, ssl: local ? false : "require", onnotice: () => {} });
     await sql.unsafe(schema);
     const wrap = (s: typeof sql): Query => (text, params = []) => s.unsafe(text, params as never[]) as never;
     return {
