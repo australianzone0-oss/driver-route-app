@@ -34,7 +34,7 @@ Every outside service is optional. Without its key the app still works:
 | Database | Built-in, on this computer only | `DATABASE_URL`: Supabase, Neon or any Postgres. **Required when deployed** |
 | Address search | OpenStreetMap (free, light use only) | `GOOGLE_MAPS_API_KEY`: Google Geocoding, better Australian addresses |
 | Reading dropped documents | File is attached, form filled by hand | `ANTHROPIC_API_KEY`: fields filled in automatically |
-| Email notice | Shown as "demo", not sent | `RESEND_API_KEY` + `NOTIFY_EMAIL_FROM` |
+| Email notice and password reset | Shown as "demo"; reset unavailable | `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` (e.g. Titan: `smtp.titan.email`), or `RESEND_API_KEY` + `NOTIFY_EMAIL_FROM` |
 | SMS notice | Shown as "demo", not sent | `CLICKSEND_USERNAME` + `CLICKSEND_API_KEY` |
 | Road route and drive time | Public OSRM demo server | Swap to Google Routes API for production |
 
