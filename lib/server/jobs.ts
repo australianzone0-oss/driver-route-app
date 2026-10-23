@@ -1,4 +1,5 @@
 import type { Job, Notice, Stop } from "@/lib/types";
+import { HttpError } from "./errors";
 import { query, type Query } from "./db";
 
 type JobRow = {
@@ -14,6 +15,10 @@ type JobRow = {
   status: Job["status"];
   attachments: Job["attachments"] | string;
   created_at: Date | string;
+  customer_id: string | null;
+  container_id: string | null;
+  price: string | number | null;
+  invoice_id: string | null;
 };
 
 type StopRow = {
@@ -67,6 +72,10 @@ export async function loadJobs(companyId: string, opts: { driverId?: string; job
     createdBy: j.created_by,
     createdAt: iso(j.created_at),
     status: j.status,
+    customerId: j.customer_id ?? undefined,
+    containerId: j.container_id ?? undefined,
+    price: j.price == null ? undefined : Number(j.price),
+    invoiceId: j.invoice_id ?? undefined,
     attachments: typeof j.attachments === "string" ? JSON.parse(j.attachments) : j.attachments,
     stops: stops
       .filter((s) => s.job_id === j.id)
@@ -98,14 +107,18 @@ export type NewJobInput = {
   driverId: string;
   createdBy: "driver" | "office";
   attachments: Job["attachments"];
+  customerId?: string | null;
+  containerId?: string | null;
+  price?: number | null;
   pickup?: { address: string; lat: number; lng: number } | null;
   dropoff: { address: string; lat: number; lng: number };
 };
 
 export async function insertJob(q: Query, companyId: string, input: NewJobInput): Promise<string> {
   const [{ id }] = await q<{ id: string }>(
-    `insert into jobs (company_id, reference, customer_name, customer_email, customer_phone, notify_on_complete, notes, driver_id, created_by, attachments)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb) returning id`,
+    `insert into jobs (company_id, reference, customer_name, customer_email, customer_phone, notify_on_complete, notes, driver_id, created_by, attachments,
+                       customer_id, container_id, price)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13) returning id`,
     [
       companyId,
       input.reference || null,
@@ -117,6 +130,9 @@ export async function insertJob(q: Query, companyId: string, input: NewJobInput)
       input.driverId,
       input.createdBy,
       JSON.stringify(input.attachments ?? []),
+      input.customerId || null,
+      input.containerId || null,
+      input.price ?? null,
     ],
   );
   for (const [type, s] of [["pickup", input.pickup], ["dropoff", input.dropoff]] as const) {
@@ -124,4 +140,12 @@ export async function insertJob(q: Query, companyId: string, input: NewJobInput)
     await q("insert into stops (job_id, type, address, lat, lng) values ($1, $2, $3, $4, $5)", [id, type, s.address, s.lat, s.lng]);
   }
   return id;
+}
+
+/** A job price in dollars ex GST, or null when blank. */
+export function readPrice(v: unknown): number | null {
+  if (v == null || String(v).trim() === "") return null;
+  const n = Number(String(v).replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(n) || n < 0) throw new HttpError(400, "The price must be a number.");
+  return Math.round(n * 100) / 100;
 }
