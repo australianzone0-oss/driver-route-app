@@ -1,3 +1,4 @@
+import nodemailer from "nodemailer";
 import { normalizePhone } from "@/lib/phone";
 
 export type NoticeInput = {
@@ -36,19 +37,37 @@ export async function sendCompletionNotice(body: NoticeInput): Promise<Result[]>
   return results;
 }
 
-export function emailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY && process.env.NOTIFY_EMAIL_FROM);
+function smtpConfigured() {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
+export function emailConfigured() {
+  return smtpConfigured() || Boolean(process.env.RESEND_API_KEY && process.env.NOTIFY_EMAIL_FROM);
+}
+
+/**
+ * Sends through SMTP (e.g. Titan: smtp.titan.email, port 465) when SMTP_* is set,
+ * otherwise through Resend. SMTP mailboxes only send as themselves, so FROM
+ * defaults to the SMTP login.
+ */
 export async function sendEmail(to: string, subject: string, text: string): Promise<Result> {
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.NOTIFY_EMAIL_FROM;
   if (!emailConfigured()) return { channel: "email", to, ok: true, demo: true };
   try {
+    if (smtpConfigured()) {
+      const port = Number(process.env.SMTP_PORT || 465);
+      const transport = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port,
+        secure: port === 465,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      });
+      await transport.sendMail({ from: process.env.NOTIFY_EMAIL_FROM || process.env.SMTP_USER, to, subject, text });
+      return { channel: "email", to, ok: true, demo: false };
+    }
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [to], subject, text }),
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: process.env.NOTIFY_EMAIL_FROM, to: [to], subject, text }),
     });
     if (!res.ok) return { channel: "email", to, ok: false, demo: false, error: await res.text() };
     return { channel: "email", to, ok: true, demo: false };
