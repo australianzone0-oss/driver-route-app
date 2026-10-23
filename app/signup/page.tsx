@@ -44,7 +44,7 @@ export default function Signup() {
       <form onSubmit={submit} className="card mt-6 space-y-4 p-5">
         <div>
           <label className="label">Company name</label>
-          <input className="field" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. Coastal Freight" required />
+          <input className="field" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. Australian Zone" required />
         </div>
         <div>
           <label className="label">Portal address</label>

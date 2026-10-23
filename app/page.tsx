@@ -59,7 +59,7 @@ export default function Home() {
           className="field"
           value={company}
           onChange={(e) => setCompany(e.target.value)}
-          placeholder="e.g. Harbour Haulage"
+          placeholder="e.g. Australian Zone"
           autoComplete="organization"
         />
         <p className="mt-1 text-xs text-slate-500">Drivers and office staff both start here. Drivers then log in with their mobile number.</p>
