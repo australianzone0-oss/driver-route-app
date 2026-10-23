@@ -69,6 +69,7 @@ export default function Customers() {
                     <td className="px-4 py-3">
                       <p className="font-semibold">{c.name}</p>
                       <p className="text-xs text-slate-500">{[c.abn && `ABN ${c.abn}`, c.address].filter(Boolean).join(" · ")}</p>
+                      {c.deliveryAddress && <p className="text-xs text-slate-500">Deliver to: {c.deliveryAddress}</p>}
                     </td>
                     <td className="px-4 py-3">
                       <p>{c.contactName}</p>
