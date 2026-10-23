@@ -124,6 +124,7 @@ create table if not exists customers (
   created_at timestamptz not null default now(),
   unique (company_id, name)
 );
+alter table customers add column if not exists delivery_address text;
 
 create table if not exists containers (
   id uuid primary key default gen_random_uuid(),

@@ -23,6 +23,7 @@ export type Customer = {
   email: string | null;
   phone: string | null;
   address: string | null;
+  deliveryAddress: string | null;
   abn: string | null;
   defaultRate: number | null;
   creditLimit: number | null;
@@ -38,6 +39,7 @@ export const customerFields: FieldSpec[] = [
   { key: "phone", col: "phone", label: "Phone", type: "tel", half: true },
   { key: "email", col: "email", label: "Email", type: "email", placeholder: "Gets job-completed notices and invoices" },
   { key: "address", col: "address", label: "Billing address", type: "text" },
+  { key: "deliveryAddress", col: "delivery_address", label: "Delivery address", type: "text", placeholder: "Where containers are delivered, if different" },
   { key: "abn", col: "abn", label: "ABN", type: "text", half: true },
   { key: "paymentTermsDays", col: "payment_terms_days", label: "Payment terms (days)", type: "number", half: true, placeholder: "Company default" },
   { key: "defaultRate", col: "default_rate", label: "Default rate per job ($, ex GST)", type: "money", half: true },
