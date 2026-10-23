@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, rememberPortal } from "@/lib/api";
+import { api, ApiError, rememberPortal } from "@/lib/api";
 
 /** A company's own login page: drivers by mobile + PIN, office by email + password. */
 export default function Portal() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const [company, setCompany] = useState<string | null>();
+  const [loadError, setLoadError] = useState<string>();
   const [method, setMethod] = useState<"driver" | "office">("driver");
   const [login, setLogin] = useState("");
   const [secret, setSecret] = useState("");
@@ -22,7 +23,7 @@ export default function Portal() {
         setCompany(c.name);
         rememberPortal(slug);
       })
-      .catch(() => setCompany(null));
+      .catch((e) => (e instanceof ApiError && e.status === 404 ? setCompany(null) : setLoadError((e as Error).message)));
   }, [slug]);
 
   async function submit(e: React.FormEvent) {
@@ -36,6 +37,15 @@ export default function Portal() {
       setError((err as Error).message);
       setBusy(false);
     }
+  }
+
+  if (loadError) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 text-center">
+        <h1 className="text-xl font-bold">Can&apos;t open this portal right now</h1>
+        <p className="mt-2 text-sm text-slate-500">{loadError}</p>
+      </main>
+    );
   }
 
   if (company === null) {

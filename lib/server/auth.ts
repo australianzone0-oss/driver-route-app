@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { query } from "./db";
+import { HttpError } from "./errors";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -74,11 +75,7 @@ export async function currentUser(): Promise<SessionUser | null> {
   return rows[0] ?? null;
 }
 
-export class HttpError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
+export { HttpError };
 
 /** Throws 401/403 unless signed in (optionally with the given role). */
 export async function requireUser(role?: "admin" | "driver"): Promise<SessionUser> {

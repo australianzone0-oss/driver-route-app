@@ -1,10 +1,11 @@
 /**
- * Postgres access. Uses DATABASE_URL, or POSTGRES_URL as set by the Supabase and
- * Neon integrations for Vercel, when present;
- * otherwise an embedded Postgres (PGlite) stored on disk, for local development.
+ * Postgres access. Uses DATABASE_URL, or the POSTGRES_URL that the Supabase and
+ * Neon integrations for Vercel add (with or without a custom prefix). Locally,
+ * without either, it uses an embedded Postgres (PGlite) stored on disk.
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { HttpError } from "./errors";
 import { schema } from "./schema";
 
 export type Query = <T = Record<string, unknown>>(text: string, params?: unknown[]) => Promise<T[]>;
@@ -13,8 +14,22 @@ type Db = { query: Query; transaction<R>(fn: (q: Query) => Promise<R>): Promise<
 
 const globalForDb = globalThis as unknown as { __db?: Promise<Db> };
 
+/** Finds the database connection string among the environment variables. */
+function databaseUrl(): string | undefined {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  // e.g. POSTGRES_URL, or STORAGE_POSTGRES_URL when the integration adds a prefix.
+  const key = Object.keys(process.env)
+    .filter((k) => /(^|_)POSTGRES_URL$/.test(k) && process.env[k])
+    .sort((a, b) => a.length - b.length)[0];
+  return key ? process.env[key] : undefined;
+}
+
 async function connect(): Promise<Db> {
-  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  const url = databaseUrl();
+  if (!url && process.env.VERCEL) {
+    // The embedded database would live in /tmp and vanish between requests.
+    throw new HttpError(503, "The database isn't connected yet. Connect Supabase to this Vercel project, then redeploy.");
+  }
   if (url) {
     const postgres = (await import("postgres")).default;
     // Hosted databases (Supabase, Neon) need SSL; a local Postgres usually doesn't.
@@ -29,7 +44,7 @@ async function connect(): Promise<Db> {
   }
 
   const { PGlite } = await import("@electric-sql/pglite");
-  const dir = process.env.VERCEL ? "/tmp/pglite" : path.join(process.cwd(), ".data/pglite");
+  const dir = path.join(process.cwd(), ".data/pglite");
   mkdirSync(dir, { recursive: true });
   const pg = await PGlite.create(dir);
   await pg.exec(schema);
