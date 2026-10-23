@@ -25,14 +25,15 @@ export const POST = handler(async (req: Request) => {
   if (!phone) throw new HttpError(400, "Enter a valid mobile number.");
   if (!PIN_RULE.test(pin)) throw new HttpError(400, "The PIN must be 6 digits.");
   await checkVehicle(u.companyId, b.vehicleId);
+  await checkVehicle(u.companyId, b.trailerId, "trailer");
 
   const exists = await query("select 1 from users where company_id = $1 and phone = $2", [u.companyId, phone]);
   if (exists.length) throw new HttpError(409, "A driver with that mobile number already exists.");
 
   const [driver] = await query<Driver>(
-    `insert into users (company_id, role, name, phone, password_hash, vehicle_id, licence_number)
-     values ($1, 'driver', $2, $3, $4, $5, $6) returning ${DRIVER_COLUMNS}`,
-    [u.companyId, name, phone, await hashSecret(pin), b.vehicleId || null, String(b.licenceNumber ?? "").trim() || null],
+    `insert into users (company_id, role, name, phone, password_hash, vehicle_id, licence_number, trailer_id)
+     values ($1, 'driver', $2, $3, $4, $5, $6, $7) returning ${DRIVER_COLUMNS}`,
+    [u.companyId, name, phone, await hashSecret(pin), b.vehicleId || null, String(b.licenceNumber ?? "").trim() || null, b.trailerId || null],
   );
   return NextResponse.json({ driver }, { status: 201 });
 });

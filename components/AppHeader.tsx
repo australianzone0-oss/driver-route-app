@@ -13,7 +13,7 @@ const officeTabs: { href: string; label: string; icon: LucideIcon; also?: string
   { href: "/office/jobs", label: "Jobs", icon: ClipboardList },
   { href: "/office/customers", label: "Customers", icon: Users },
   { href: "/office/containers", label: "Containers", icon: Boxes },
-  { href: "/office/drivers", label: "Resources", icon: Truck, also: ["/office/vehicles"] },
+  { href: "/office/drivers", label: "Resources", icon: Truck, also: ["/office/vehicles", "/office/trailers"] },
   { href: "/office/finance", label: "Finance", icon: DollarSign },
   { href: "/office/reports", label: "Reports", icon: FileText },
   { href: "/office/tools", label: "Tools", icon: Wrench },

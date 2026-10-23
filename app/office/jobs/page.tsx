@@ -66,7 +66,7 @@ export default function OfficeJobs() {
             return (
               <div key={d.id} className="card p-4">
                 <p className="text-sm font-semibold">{d.name}</p>
-                <p className="text-xs text-slate-500">{regoOf(d.vehicleId) ? `🚚 ${regoOf(d.vehicleId)}` : "No vehicle"}</p>
+                <p className="text-xs text-slate-500">{[regoOf(d.vehicleId) ? `🚚 ${regoOf(d.vehicleId)}` : "No vehicle", regoOf(d.trailerId) && `🚛 ${regoOf(d.trailerId)}`].filter(Boolean).join(" · ")}</p>
                 <p className="mt-1 text-2xl font-bold">
                   {c.open} <span className="text-sm font-medium text-slate-500">open</span>
                 </p>

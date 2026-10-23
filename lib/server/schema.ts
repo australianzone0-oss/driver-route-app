@@ -99,6 +99,8 @@ create index if not exists notices_job on notices (job_id);
 -- Company details used on invoices and in Settings.
 alter table companies add column if not exists abn text;
 alter table companies add column if not exists address text;
+alter table vehicles add column if not exists kind text not null default 'truck' check (kind in ('truck', 'trailer'));
+alter table users add column if not exists trailer_id uuid references vehicles on delete set null;
 alter table companies add column if not exists phone text;
 alter table companies add column if not exists email text;
 alter table companies add column if not exists gst_rate numeric(5,2) not null default 10;

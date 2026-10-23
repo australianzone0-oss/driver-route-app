@@ -35,6 +35,10 @@ export const PATCH = handler(async (req: Request, ctx: Ctx) => {
     await checkVehicle(u.companyId, b.vehicleId);
     add("vehicle_id", b.vehicleId || null);
   }
+  if (b.trailerId !== undefined) {
+    await checkVehicle(u.companyId, b.trailerId, "trailer");
+    add("trailer_id", b.trailerId || null);
+  }
   if (b.licenceNumber !== undefined) add("licence_number", String(b.licenceNumber).trim() || null);
   if (b.active !== undefined) add("active", Boolean(b.active));
   if (b.pin !== undefined) {
