@@ -2,24 +2,22 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { CompleteSheet } from "@/components/CompleteSheet";
 import { distanceKm, formatKm, formatMinutes, googleMapsLink, wazeLink } from "@/lib/geo";
 import { planRun, type PlannedStop } from "@/lib/planner";
-import { actions, useStore } from "@/lib/store";
-import type { LatLng, Notice } from "@/lib/types";
+import { api, useApi, useMe } from "@/lib/api";
+import type { Job, LatLng } from "@/lib/types";
 
 const RunMap = dynamic(() => import("@/components/RunMap"), { ssr: false, loading: () => <div className="h-full w-full bg-slate-200" /> });
 
 type Leg = { km: number; minutes: number; line: [number, number][] };
 
 export default function RunPage() {
-  const { session, jobs, drivers, ready } = useStore();
-  const router = useRouter();
-  const driverId = session?.role === "driver" ? session.driverId : null;
-  const driver = drivers.find((d) => d.id === driverId);
+  const me = useMe("driver");
+  const jobsApi = useApi<{ jobs: Job[] }>(me ? "/api/jobs" : null, 30000);
+  const jobs = useMemo(() => jobsApi.data?.jobs ?? [], [jobsApi.data]);
 
   const [gps, setGps] = useState<LatLng | null>(null);
   const [gpsState, setGpsState] = useState<"waiting" | "on" | "off">("waiting");
@@ -27,10 +25,6 @@ export default function RunPage() {
   const [leg, setLeg] = useState<Leg | null>(null);
   const [completing, setCompleting] = useState<PlannedStop | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (ready && !driverId) router.replace("/");
-  }, [ready, driverId, router]);
 
   // Follow the driver's location, ignoring jitter under 50 m.
   useEffect(() => {
@@ -50,7 +44,7 @@ export default function RunPage() {
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
-  const myJobs = useMemo(() => jobs.filter((j) => j.driverId === driverId), [jobs, driverId]);
+  const myJobs = jobs;
 
   // Without GPS, plan from the last stop completed.
   const lastDone = useMemo(() => {
@@ -87,39 +81,21 @@ export default function RunPage() {
     const { job, stop } = completing;
     setCompleting(null);
     setPinned(null);
-    const updated = actions.completeStop(job.id, stop.id, { receivedBy: d.receivedBy, photo: d.photo, signature: d.signature });
-    if (!updated || updated.status !== "completed") {
-      setToast(`Picked up for ${job.customerName}. Drop-off added to your run.`);
-      return;
-    }
-    if (!d.notify) {
-      setToast(`Job complete for ${job.customerName}.`);
-      return;
-    }
-    setToast("Job complete. Sending notice…");
+    setToast(stop.type === "dropoff" ? "Completing job…" : "Saving pickup…");
     try {
-      const res = await fetch("/api/notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: job.customerEmail,
-          phone: job.customerPhone,
-          customerName: job.customerName,
-          reference: job.reference,
-          address: stop.address,
-          completedAt: new Date().toISOString(),
-          receivedBy: d.receivedBy,
-          driverName: driver?.name ?? "your driver",
-        }),
-      });
-      const data = await res.json();
-      const now = new Date().toISOString();
-      const notices: Notice[] = data.results.map((r: Omit<Notice, "sentAt">) => ({ ...r, sentAt: now }));
-      actions.addNotices(job.id, notices);
-      const parts = notices.map((n) => `${n.channel === "email" ? "Email" : "SMS"} ${n.ok ? (n.demo ? "ready (demo, not sent)" : "sent") : "failed"}`);
-      setToast(`Job complete. ${parts.join(", ")}.`);
-    } catch {
-      setToast("Job complete, but the notice couldn't be sent.");
+      const r = await api<{ job: Job; completed: boolean }>(`/api/stops/${stop.id}/complete`, { body: d });
+      jobsApi.setData((prev) => prev && { jobs: prev.jobs.map((j) => (j.id === r.job.id ? r.job : j)) });
+      if (!r.completed) {
+        setToast(`Picked up for ${job.customerName}. Drop-off added to your run.`);
+      } else if (!r.job.notices.length) {
+        setToast(`Job complete for ${job.customerName}.`);
+      } else {
+        const parts = r.job.notices.map((n) => `${n.channel === "email" ? "Email" : "SMS"} ${n.ok ? (n.demo ? "ready (demo, not sent)" : "sent") : "failed"}`);
+        setToast(`Job complete. ${parts.join(", ")}.`);
+      }
+    } catch (e) {
+      setToast((e as Error).message);
+      jobsApi.refresh();
     }
   }
 
@@ -129,11 +105,11 @@ export default function RunPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  if (!ready || !driverId) return null;
+  if (!me) return null;
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AppHeader title={driver ? `${driver.name.split(" ")[0]}'s run` : "My run"} />
+      <AppHeader me={me} title={`${me.name.split(" ")[0]}'s run${me.vehicle ? ` · ${me.vehicle.rego}` : ""}`} />
 
       <div className="relative h-[38dvh] min-h-56 w-full">
         <RunMap plan={plan} here={start} nextLine={leg?.line ?? null} />
@@ -173,12 +149,12 @@ export default function RunPage() {
         ) : (
           <section className="card p-6 text-center">
             <p className="text-3xl">✅</p>
-            <h2 className="mt-2 text-lg font-bold">{myJobs.length ? "All stops done" : "No jobs yet"}</h2>
+            <h2 className="mt-2 text-lg font-bold">{!jobsApi.data ? "Loading your run…" : myJobs.length ? "All stops done" : "No jobs yet"}</h2>
             <p className="mt-1 text-sm text-slate-500">
               {myJobs.length ? `${doneToday} job${doneToday === 1 ? "" : "s"} completed.` : "Add a job, or load a sample run to try the app."}
             </p>
             {!myJobs.length && (
-              <button className="btn-ghost mt-4" onClick={() => actions.loadSample(driverId)}>
+              <button className="btn-ghost mt-4" onClick={() => api("/api/jobs/sample", { body: {} }).then(jobsApi.refresh)}>
                 Load sample run (Sydney)
               </button>
             )}

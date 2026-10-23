@@ -49,6 +49,31 @@ export type Notice = {
   error?: string;
 };
 
-export type Driver = { id: string; name: string };
+export type Vehicle = {
+  id: string;
+  rego: string;
+  description: string | null;
+  vehicleType: string | null;
+  capacity: string | null;
+  notes: string | null;
+  active: boolean;
+};
 
-export type Session = { role: "driver"; driverId: string } | { role: "office" };
+export type Driver = {
+  id: string;
+  name: string;
+  phone: string;
+  licenceNumber: string | null;
+  vehicleId: string | null;
+  active: boolean;
+};
+
+export type Me = {
+  id: string;
+  name: string;
+  role: "admin" | "driver";
+  email: string | null;
+  phone: string | null;
+  vehicle: Vehicle | null;
+  company: { name: string; slug: string };
+};

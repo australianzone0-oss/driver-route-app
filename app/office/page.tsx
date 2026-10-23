@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { actions, useStore } from "@/lib/store";
-import type { Job } from "@/lib/types";
+import { api, useApi, useMe } from "@/lib/api";
+import type { Driver, Job, Vehicle } from "@/lib/types";
 
 const statusStyle: Record<Job["status"], string> = {
   pending: "bg-slate-100 text-slate-700",
@@ -15,21 +14,35 @@ const statusStyle: Record<Job["status"], string> = {
 const statusLabel: Record<Job["status"], string> = { pending: "Pending", in_progress: "In progress", completed: "Completed" };
 
 export default function Office() {
-  const { session, jobs, drivers, ready } = useStore();
-  const router = useRouter();
+  const me = useMe("admin");
+  const jobsApi = useApi<{ jobs: Job[] }>(me ? "/api/jobs" : null, 15000);
+  const driversApi = useApi<{ drivers: Driver[] }>(me ? "/api/drivers" : null);
+  const vehiclesApi = useApi<{ vehicles: Vehicle[] }>(me ? "/api/vehicles" : null);
+  const jobs = useMemo(() => jobsApi.data?.jobs ?? [], [jobsApi.data]);
+  const allDrivers = driversApi.data?.drivers ?? [];
+  const drivers = allDrivers.filter((d) => d.active);
+  const nameOf = (id: string) => allDrivers.find((d) => d.id === id)?.name ?? "Unknown driver";
+  const regoOf = (id: string | null) => vehiclesApi.data?.vehicles.find((v) => v.id === id)?.rego;
+  const [error, setError] = useState<string>();
   const [driverFilter, setDriverFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | Job["status"]>("all");
 
-  useEffect(() => {
-    if (ready && session?.role !== "office") router.replace("/");
-  }, [ready, session, router]);
+  async function run(fn: () => Promise<unknown>) {
+    setError(undefined);
+    try {
+      await fn();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    jobsApi.refresh();
+  }
 
   const shown = useMemo(
     () => jobs.filter((j) => (driverFilter === "all" || j.driverId === driverFilter) && (statusFilter === "all" || j.status === statusFilter)),
     [jobs, driverFilter, statusFilter],
   );
 
-  if (!ready || session?.role !== "office") return null;
+  if (!me) return null;
 
   const counts = (id: string) => {
     const mine = jobs.filter((j) => j.driverId === id);
@@ -38,14 +51,21 @@ export default function Office() {
 
   return (
     <div className="min-h-dvh">
-      <AppHeader title="Office board" />
+      <AppHeader me={me} />
       <main className="mx-auto max-w-5xl space-y-4 px-4 py-4">
         <div className="grid gap-3 sm:grid-cols-3">
+          {drivers.length === 0 && driversApi.data && (
+            <Link href="/office/drivers" className="card p-4 text-sm text-slate-600 hover:bg-slate-50">
+              <p className="font-semibold text-slate-800">No drivers yet</p>
+              Add drivers before creating jobs →
+            </Link>
+          )}
           {drivers.map((d) => {
             const c = counts(d.id);
             return (
               <div key={d.id} className="card p-4">
                 <p className="text-sm font-semibold">{d.name}</p>
+                <p className="text-xs text-slate-500">{regoOf(d.vehicleId) ? `🚚 ${regoOf(d.vehicleId)}` : "No vehicle"}</p>
                 <p className="mt-1 text-2xl font-bold">
                   {c.open} <span className="text-sm font-medium text-slate-500">open</span>
                 </p>
@@ -74,11 +94,17 @@ export default function Office() {
             <option value="completed">Completed</option>
           </select>
           <div className="ml-auto flex gap-2">
-            <button className="btn-ghost py-2" onClick={() => actions.loadSample(driverFilter === "all" ? drivers[0].id : driverFilter)}>
+            <button
+              className="btn-ghost py-2"
+              disabled={!drivers.length}
+              onClick={() => run(() => api("/api/jobs/sample", { body: { driverId: driverFilter === "all" ? drivers[0].id : driverFilter } }))}
+            >
               Load sample jobs
             </button>
           </div>
         </div>
+
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         {shown.length === 0 ? (
           <div className="card p-8 text-center text-sm text-slate-500">No jobs to show.</div>
@@ -126,9 +152,10 @@ export default function Office() {
                         className="field w-auto py-1.5 text-sm"
                         value={j.driverId}
                         disabled={j.status === "completed"}
-                        onChange={(e) => actions.updateJob(j.id, { driverId: e.target.value })}
+                        onChange={(e) => run(() => api(`/api/jobs/${j.id}`, { method: "PATCH", body: { driverId: e.target.value } }))}
                         aria-label="Assigned driver"
                       >
+                        {!drivers.some((d) => d.id === j.driverId) && <option value={j.driverId}>{nameOf(j.driverId)}</option>}
                         {drivers.map((d) => (
                           <option key={d.id} value={d.id}>
                             {d.name}
@@ -137,7 +164,7 @@ export default function Office() {
                       </select>
                       <button
                         className="rounded-lg px-2 py-1.5 text-sm text-slate-400 hover:bg-red-50 hover:text-red-600"
-                        onClick={() => confirm(`Delete job for ${j.customerName}?`) && actions.deleteJob(j.id)}
+                        onClick={() => confirm(`Delete job for ${j.customerName}?`) && run(() => api(`/api/jobs/${j.id}`, { method: "DELETE" }))}
                         aria-label="Delete job"
                       >
                         ✕

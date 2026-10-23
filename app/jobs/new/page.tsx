@@ -6,15 +6,17 @@ import type { ExtractedJob } from "@/app/api/extract/route";
 import { AddressInput, geocodeFirst, type AddressValue } from "@/components/AddressInput";
 import { AppHeader } from "@/components/AppHeader";
 import { DocDrop } from "@/components/DocDrop";
-import { actions, uid, useStore } from "@/lib/store";
-import type { Attachment, Job, Stop } from "@/lib/types";
+import { api, useApi, useMe } from "@/lib/api";
+import type { Attachment, Driver } from "@/lib/types";
 
 const empty: AddressValue = { address: "", location: null };
 
 export default function NewJob() {
-  const { session, drivers, ready } = useStore();
+  const me = useMe();
   const router = useRouter();
-  const isOffice = session?.role === "office";
+  const isOffice = me?.role === "admin";
+  const driversApi = useApi<{ drivers: Driver[] }>(isOffice ? "/api/drivers" : null);
+  const drivers = (driversApi.data?.drivers ?? []).filter((d) => d.active);
 
   const [driverId, setDriverId] = useState("");
   const [reference, setReference] = useState("");
@@ -29,11 +31,11 @@ export default function NewJob() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const firstDriver = drivers[0]?.id;
   useEffect(() => {
-    if (!ready) return;
-    if (!session) router.replace("/");
-    else setDriverId((d) => d || (session.role === "driver" ? session.driverId : drivers[0]?.id ?? ""));
-  }, [ready, session, drivers, router]);
+    if (firstDriver) setDriverId((d) => d || firstDriver);
+  }, [firstDriver]);
+  const [busy, setBusy] = useState(false);
 
   async function fill(f: ExtractedJob) {
     if (f.reference) setReference(f.reference);
@@ -51,43 +53,43 @@ export default function NewJob() {
     if (f.dropoffAddress) setDropoff({ address: d?.label ?? f.dropoffAddress, location: d ? { lat: d.lat, lng: d.lng } : null });
   }
 
-  function save(e: React.FormEvent) {
+  async function save(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     if (!customerName.trim()) return setError("Add the customer name.");
     if (!dropoff.location) return setError("Pick the drop-off address from the list so it can go on the map.");
     if (hasPickup && !pickup.location) return setError("Pick the pickup address from the list, or turn off pickup.");
-    if (!driverId) return setError("Choose a driver.");
+    if (isOffice && !driverId) return setError("Choose a driver. Add drivers in the Drivers tab first.");
 
-    const id = uid();
-    const stops: Stop[] = [];
-    if (hasPickup && pickup.location) stops.push({ id: `${id}-p`, jobId: id, type: "pickup", address: pickup.address, location: pickup.location, status: "pending" });
-    stops.push({ id: `${id}-d`, jobId: id, type: "dropoff", address: dropoff.address, location: dropoff.location, status: "pending" });
-
-    const job: Job = {
-      id,
-      reference: reference.trim() || undefined,
-      customerName: customerName.trim(),
-      customerEmail: customerEmail.trim() || undefined,
-      customerPhone: customerPhone.trim() || undefined,
-      notifyOnComplete: notify,
-      notes: notes.trim() || undefined,
-      driverId,
-      createdBy: isOffice ? "office" : "driver",
-      createdAt: new Date().toISOString(),
-      status: "pending",
-      stops,
-      attachments,
-      notices: [],
-    };
-    actions.addJob(job);
-    router.push(isOffice ? "/office" : "/run");
+    const at = (v: AddressValue) => (v.location ? { address: v.address, lat: v.location.lat, lng: v.location.lng } : null);
+    setBusy(true);
+    try {
+      await api("/api/jobs", {
+        body: {
+          reference,
+          customerName,
+          customerEmail,
+          customerPhone,
+          notifyOnComplete: notify,
+          notes,
+          driverId,
+          attachments,
+          pickup: hasPickup ? at(pickup) : null,
+          dropoff: at(dropoff),
+        },
+      });
+      router.push(isOffice ? "/office" : "/run");
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
   }
 
-  if (!ready || !session) return null;
+  if (!me) return null;
 
   return (
     <div className="min-h-dvh">
-      <AppHeader title="New job" back={isOffice ? "/office" : "/run"} />
+      <AppHeader me={me} title="New job" back={isOffice ? "/office" : "/run"} />
       <form onSubmit={save} className="mx-auto max-w-xl space-y-4 px-4 pb-32 pt-4">
         <section className="card p-4">
           <DocDrop onFields={fill} onAttach={(a) => setAttachments((list) => [...list, a])} />
@@ -165,8 +167,8 @@ export default function NewJob() {
         <div className="fixed inset-x-0 bottom-0 z-[900] border-t border-slate-200 bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
           <div className="mx-auto max-w-xl">
             {error && <p className="mb-2 text-sm font-medium text-red-600">{error}</p>}
-            <button type="submit" className="btn-primary w-full">
-              Save job
+            <button type="submit" className="btn-primary w-full" disabled={busy}>
+              {busy ? "Saving…" : "Save job"}
             </button>
           </div>
         </div>
