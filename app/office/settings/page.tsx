@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AddressFields } from "@/components/AddressFields";
 import { AppHeader } from "@/components/AppHeader";
 import { api, useApi, useMe } from "@/lib/api";
 
@@ -85,7 +86,10 @@ function CompanyForm() {
         {field("phone", "Phone", { type: "tel" })}
       </div>
       {field("email", "Accounts email", { type: "email" })}
-      {field("address", "Address")}
+      <div>
+        <p className="label">Address</p>
+        <AddressFields id="s-address" value={c.address ?? ""} onChange={(address) => setC({ ...c, address })} />
+      </div>
       <h3 className="pt-2 text-sm font-semibold">Invoicing</h3>
       <div className="grid gap-3 sm:grid-cols-2">
         {field("invoicePrefix", "Invoice prefix")}

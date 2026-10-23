@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { LatLng } from "@/lib/types";
+import { AddressFields } from "./AddressFields";
 
 export type AddressValue = { address: string; location: LatLng | null };
 
@@ -17,13 +18,11 @@ export function AddressInput({
   label,
   value,
   onChange,
-  placeholder,
   required,
 }: {
   label: string;
   value: AddressValue;
   onChange: (v: AddressValue) => void;
-  placeholder?: string;
   required?: boolean;
 }) {
   const [results, setResults] = useState<Result[]>([]);
@@ -32,7 +31,7 @@ export function AddressInput({
   const typed = useRef(false);
 
   useEffect(() => {
-    if (!typed.current || value.location || value.address.trim().length < 4) {
+    if (!typed.current || value.location || !value.address.includes(",")) {
       setResults([]);
       return;
     }
@@ -54,32 +53,31 @@ export function AddressInput({
   }, [value.address, value.location]);
 
   return (
-    <div className="relative">
+    <div className="relative" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setTimeout(() => setOpen(false), 150)}>
       <label className="label">
         {label}
         {required && <span className="text-red-500"> *</span>}
       </label>
-      <input
-        className="field pr-20"
+      <AddressFields
+        id={label.toLowerCase().replace(/\W+/g, "-")}
         value={value.address}
-        placeholder={placeholder ?? "Start typing an address"}
-        onChange={(e) => {
+        required={required}
+        onChange={(address) => {
           typed.current = true;
-          onChange({ address: e.target.value, location: null });
+          onChange({ address, location: null });
         }}
-        onFocus={() => results.length && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        autoComplete="off"
       />
-      <span className="pointer-events-none absolute right-3 top-[34px] text-xs font-medium">
+      <p className="mt-1 text-xs font-medium">
         {loading ? (
-          <span className="text-slate-400">Searching…</span>
+          <span className="text-slate-400">Searching the map…</span>
         ) : value.location ? (
-          <span className="text-emerald-600">✓ Found</span>
+          <span className="text-emerald-600">✓ Found on the map</span>
+        ) : results.length ? (
+          <button type="button" className="text-amber-600 underline" onClick={() => setOpen(true)}>Pick the match below</button>
         ) : value.address ? (
-          <span className="text-amber-600">Pick one</span>
+          <span className="text-slate-500">Fill in street, suburb, state and postcode to find it on the map</span>
         ) : null}
-      </span>
+      </p>
       {open && results.length > 0 && (
         <ul className="absolute z-[1100] mt-1 max-h-64 w-full overflow-auto rounded-xl bg-white py-1 shadow-lg ring-1 ring-slate-200">
           {results.map((r) => (
@@ -90,7 +88,8 @@ export function AddressInput({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   typed.current = false;
-                  onChange({ address: r.label, location: { lat: r.lat, lng: r.lng } });
+                  // Keep the address as typed; the match only places it on the map.
+                  onChange({ address: value.address, location: { lat: r.lat, lng: r.lng } });
                   setOpen(false);
                 }}
               >

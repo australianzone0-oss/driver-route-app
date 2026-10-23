@@ -2,7 +2,7 @@
  * Field lists for simple office records. The same list drives the form on the
  * page and the validation and columns on the server.
  */
-export type FieldType = "text" | "email" | "tel" | "number" | "money" | "date" | "bool" | "select" | "textarea" | "customer";
+export type FieldType = "text" | "email" | "tel" | "number" | "money" | "date" | "bool" | "select" | "textarea" | "customer" | "address";
 
 export type FieldSpec = {
   key: string;
@@ -38,8 +38,8 @@ export const customerFields: FieldSpec[] = [
   { key: "contactName", col: "contact_name", label: "Contact person", type: "text", half: true },
   { key: "phone", col: "phone", label: "Phone", type: "tel", half: true },
   { key: "email", col: "email", label: "Email", type: "email", placeholder: "Gets job-completed notices and invoices" },
-  { key: "address", col: "address", label: "Billing address", type: "text" },
-  { key: "deliveryAddress", col: "delivery_address", label: "Delivery address", type: "text", placeholder: "Where containers are delivered, if different" },
+  { key: "address", col: "address", label: "Billing address", type: "address" },
+  { key: "deliveryAddress", col: "delivery_address", label: "Delivery address (if different)", type: "address" },
   { key: "abn", col: "abn", label: "ABN", type: "text", half: true },
   { key: "paymentTermsDays", col: "payment_terms_days", label: "Payment terms (days)", type: "number", half: true, placeholder: "Company default" },
   { key: "defaultRate", col: "default_rate", label: "Default rate per job ($, ex GST)", type: "money", half: true },

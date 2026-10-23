@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { FieldSpec } from "@/lib/records";
+import { AddressFields } from "./AddressFields";
 
 type Values = Record<string, unknown>;
 
@@ -94,6 +95,7 @@ function Input({
   onChange: (v: string) => void;
   customers: { id: string; name: string }[];
 }) {
+  if (f.type === "address") return <AddressFields id={id} value={value} onChange={onChange} required={f.required} />;
   const common = { id, className: `field ${f.upper ? "font-mono uppercase" : ""}`, value, placeholder: f.placeholder, required: f.required };
   if (f.type === "textarea") return <textarea {...common} className="field min-h-16" onChange={(e) => onChange(e.target.value)} />;
   if (f.type === "select")
