@@ -5,9 +5,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { Modal } from "@/components/Modal";
 import { RecordForm } from "@/components/RecordForm";
 import { api, useApi, useMe } from "@/lib/api";
-import { CONTAINER_STATUS, containerFields, type Container, type Customer } from "@/lib/records";
+import { CONTAINER_STATUS, STATUS_COLOR, containerFields, containerQuickFields, type Container, type Customer } from "@/lib/records";
 
-const statusLabel = Object.fromEntries(CONTAINER_STATUS.map((s) => [s.value, s.label]));
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Sydney" });
 const fmt = (d: string | null) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-AU", { day: "numeric", month: "short" }) : "—");
 
@@ -20,6 +19,7 @@ export default function Containers() {
   const list = useApi<{ items: Container[] }>(me ? "/api/containers" : null);
   const customers = useApi<{ items: Customer[] }>(me ? "/api/customers" : null);
   const [editing, setEditing] = useState<Container | "new" | null>(null);
+  const [quick, setQuick] = useState<Container | null>(null);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"open" | "held" | "dehire" | "all">("open");
 
@@ -36,6 +36,11 @@ export default function Containers() {
   }, [list.data, q, view]);
 
   if (!me) return null;
+
+  async function move(k: Container, status: string) {
+    await api(`/api/containers/${k.id}`, { method: "PATCH", body: { status } }).catch((e) => alert(e.message));
+    list.refresh();
+  }
 
   return (
     <div className="min-h-dvh">
@@ -72,6 +77,7 @@ export default function Containers() {
                   <th className="px-4 py-3">Container</th>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Where</th>
+                  <th className="px-4 py-3">Job</th>
                   <th className="px-4 py-3">Wharf</th>
                   <th className="px-4 py-3">Dehire by</th>
                   <th />
@@ -84,26 +90,59 @@ export default function Containers() {
                     <tr key={k.id} className="border-b border-slate-100 last:border-0">
                       <td className="px-4 py-3">
                         <p className="font-mono font-semibold tracking-wide">{k.containerNumber}</p>
-                        <p className="text-xs text-slate-500">
-                          {[k.size && `${k.size}'`, k.containerType, k.fullEmpty === "full" ? "Full" : "Empty", k.movement === "import" ? "Import" : "Export"]
+                        <button
+                          className="mt-0.5 rounded-md px-1 -mx-1 text-left text-xs text-slate-500 underline decoration-dotted underline-offset-2 hover:bg-brand-50 hover:text-brand-700"
+                          onClick={() => setQuick(k)}
+                          title="Quick edit"
+                        >
+                          {[
+                            k.size && `${k.size}'`,
+                            k.containerType,
+                            k.fullEmpty === "full" ? "Full" : "Empty",
+                            k.movement === "import" ? "Import" : "Export",
+                            k.weightKg != null && `${k.weightKg.toLocaleString("en-AU")} kg`,
+                            k.doorDirection && `Door ${k.doorDirection}`,
+                          ]
                             .filter(Boolean)
-                            .join(" · ")}
-                        </p>
+                            .join(" · ")}{" "}
+                          ✎
+                        </button>
+                        {k.edoPin && <p className="text-xs text-slate-500">EDO PIN <span className="font-mono">{k.edoPin}</span></p>}
                       </td>
                       <td className="px-4 py-3">{custName(k.customerId) ?? "—"}</td>
                       <td className="px-4 py-3">
-                        {statusLabel[k.status]}
+                        <select
+                          aria-label={`Where is ${k.containerNumber}`}
+                          className={`cursor-pointer rounded-full border-0 py-1 pl-3 pr-7 text-xs font-semibold ring-1 ${STATUS_COLOR[k.status] ?? ""}`}
+                          value={k.status}
+                          onChange={(e) => move(k, e.target.value)}
+                        >
+                          {CONTAINER_STATUS.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
                         {k.held && (
                           <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700" title={k.holdReason ?? undefined}>
                             ⚠ Held
                           </span>
                         )}
-                        {k.vessel && <p className="text-xs text-slate-500">{[k.vessel, k.voyage].filter(Boolean).join(" / ")}</p>}
+                        {k.vessel && <p className="mt-1 text-xs text-slate-500">{[k.vessel, k.voyage].filter(Boolean).join(" / ")}</p>}
+                        {k.emptyPark && <p className="text-xs text-slate-500">Empty park: {k.emptyPark}</p>}
                       </td>
                       <td className="px-4 py-3 text-xs">
+                        {k.jobDate ? (
+                          <p className="font-medium">{fmt(k.jobDate)}{k.jobTime && `, ${k.jobTime}`}</p>
+                        ) : k.jobTime ? (
+                          <p className="font-medium">{k.jobTime}</p>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {k.wharf && <p className="font-medium">{k.wharf}</p>}
                         {k.wharfPickupDate && <p>Pickup {fmt(k.wharfPickupDate)}</p>}
                         {k.wharfDropoffDate && <p>Drop-off {fmt(k.wharfDropoffDate)}</p>}
-                        {!k.wharfPickupDate && !k.wharfDropoffDate && "—"}
+                        {!k.wharf && !k.wharfPickupDate && !k.wharfDropoffDate && "—"}
                       </td>
                       <td className="px-4 py-3">
                         {fmt(k.dehireDate)}
@@ -126,6 +165,21 @@ export default function Containers() {
           </div>
         )}
       </main>
+
+      {quick && (
+        <Modal title={`Quick edit ${quick.containerNumber}`} onClose={() => setQuick(null)}>
+          <RecordForm
+            fields={containerQuickFields}
+            initial={quick}
+            submitLabel="Save"
+            onSubmit={async (body) => {
+              await api(`/api/containers/${quick.id}`, { method: "PATCH", body });
+              setQuick(null);
+              list.refresh();
+            }}
+          />
+        </Modal>
+      )}
 
       {editing && (
         <Modal title={editing === "new" ? "Add container" : `Container ${editing.containerNumber}`} onClose={() => setEditing(null)}>

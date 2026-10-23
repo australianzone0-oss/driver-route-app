@@ -2,7 +2,7 @@
  * Field lists for simple office records. The same list drives the form on the
  * page and the validation and columns on the server.
  */
-export type FieldType = "text" | "email" | "tel" | "number" | "money" | "date" | "bool" | "select" | "textarea" | "customer" | "address";
+export type FieldType = "text" | "email" | "tel" | "number" | "money" | "date" | "bool" | "select" | "textarea" | "customer" | "address" | "time";
 
 export type FieldSpec = {
   key: string;
@@ -76,6 +76,11 @@ export type Container = {
   dehireDate: string | null;
   emptyPark: string | null;
   weightKg: number | null;
+  wharf: string | null;
+  doorDirection: "rear" | "front" | null;
+  edoPin: string | null;
+  jobDate: string | null;
+  jobTime: string | null;
   notes: string | null;
 };
 
@@ -99,6 +104,10 @@ export const containerFields: FieldSpec[] = [
   { key: "movement", col: "movement", label: "Import or export", type: "select", half: true, options: [{ value: "import", label: "Import" }, { value: "export", label: "Export" }] },
   { key: "fullEmpty", col: "full_empty", label: "Full or empty", type: "select", half: true, options: [{ value: "full", label: "Full" }, { value: "empty", label: "Empty" }] },
   { key: "status", col: "status", label: "Where is it", type: "select", options: CONTAINER_STATUS },
+  { key: "jobDate", col: "job_date", label: "Job date", type: "date", half: true },
+  { key: "jobTime", col: "job_time", label: "Job time", type: "time", half: true },
+  { key: "wharf", col: "wharf", label: "Wharf", type: "text", half: true, placeholder: "e.g. Patrick Port Botany" },
+  { key: "edoPin", col: "edo_pin", label: "EDO PIN", type: "text", half: true },
   { key: "vessel", col: "vessel", label: "Vessel", type: "text", half: true },
   { key: "voyage", col: "voyage", label: "Voyage", type: "text", half: true },
   { key: "wharfPickupDate", col: "wharf_pickup_date", label: "Wharf pickup date", type: "date", half: true },
@@ -106,10 +115,28 @@ export const containerFields: FieldSpec[] = [
   { key: "dehireDate", col: "dehire_date", label: "Dehire (return empty) by", type: "date", half: true },
   { key: "emptyPark", col: "empty_park", label: "Empty park", type: "text", half: true },
   { key: "weightKg", col: "weight_kg", label: "Gross weight (kg)", type: "number", half: true },
+  {
+    key: "doorDirection", col: "door_direction", label: "Door direction", type: "select", half: true,
+    options: [{ value: "", label: "Not set" }, { value: "rear", label: "Door rear" }, { value: "front", label: "Door front" }],
+  },
   { key: "held", col: "held", label: "On hold (customs, quarantine or shipping line)", type: "bool" },
   { key: "holdReason", col: "hold_reason", label: "Hold reason", type: "text" },
   { key: "notes", col: "notes", label: "Notes", type: "textarea" },
 ];
+
+/** The fields in the quick editor that opens from a container's details line. */
+const QUICK = ["size", "containerType", "fullEmpty", "movement", "wharf", "emptyPark", "weightKg", "doorDirection", "edoPin", "jobDate", "jobTime"];
+export const containerQuickFields = QUICK.map((k) => containerFields.find((f) => f.key === k)!);
+
+/** Pill colours for each place a container can be. */
+export const STATUS_COLOR: Record<string, string> = {
+  at_wharf: "bg-sky-100 text-sky-800 ring-sky-200",
+  in_transit: "bg-amber-100 text-amber-800 ring-amber-200",
+  at_customer: "bg-violet-100 text-violet-800 ring-violet-200",
+  at_depot: "bg-teal-100 text-teal-800 ring-teal-200",
+  empty_park: "bg-orange-100 text-orange-800 ring-orange-200",
+  returned: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+};
 
 /** ISO 6346 check digit for the first 10 characters of a container number. */
 export function containerCheckDigit(first10: string): number | null {

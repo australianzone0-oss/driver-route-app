@@ -149,6 +149,11 @@ create table if not exists containers (
   notes text,
   created_at timestamptz not null default now()
 );
+alter table containers add column if not exists wharf text;            -- terminal, e.g. Patrick Port Botany
+alter table containers add column if not exists door_direction text;   -- rear or front, for loading at the customer
+alter table containers add column if not exists edo_pin text;          -- release PIN from the electronic delivery order
+alter table containers add column if not exists job_date date;
+alter table containers add column if not exists job_time text;         -- HH:MM
 
 create table if not exists invoices (
   id uuid primary key default gen_random_uuid(),

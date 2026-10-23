@@ -33,6 +33,8 @@ export function readFields(fields: FieldSpec[], body: Record<string, unknown>, p
         value = n;
       } else if (f.type === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
         throw new HttpError(400, `${f.label} must be a date.`);
+      } else if (f.type === "time" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(value))) {
+        throw new HttpError(400, `${f.label} must be a time like 08:30.`);
       } else if (f.type === "select" && f.options && !f.options.some((o) => o.value === value)) {
         throw new HttpError(400, `Choose a valid ${f.label.toLowerCase()}.`);
       } else if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) {
