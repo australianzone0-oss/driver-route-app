@@ -11,6 +11,21 @@ A simple app for transport companies, their office staff and their drivers:
 - **Office** can create jobs, assign or reassign them to drivers, and see progress.
 - **Complete a job** with an optional name, photo and signature. If the job has an email and/or mobile number, the customer gets a "job completed" notice.
 
+## Office tabs
+
+| Tab | What it does |
+| --- | --- |
+| Dashboard | Dehire reminders, jobs not invoiced, customers on credit hold, held containers, wharf pickups and drop-offs for the next 7 days, unpaid invoices |
+| Jobs | Every job, reassign drivers |
+| Customers | Customer accounts with default rate, payment terms and credit hold |
+| Containers | Container numbers (ISO 6346 check digit), wharf dates, holds, dehire dates |
+| Resources | Drivers and vehicles |
+| Finance | Invoice completed jobs per customer with GST, email or print invoices, mark paid |
+| Reports | Jobs, drivers, containers and invoices for a date range, as a table or CSV |
+| Tools | Container number check, GST calculator, distance and drive time, customer import |
+| Analytics | Jobs per day, invoiced per month, top customers, jobs per driver |
+| Settings | Company details for invoices, invoice numbering, office staff logins, password |
+
 ## Run it
 
 You need [Node.js](https://nodejs.org) 20 or newer.

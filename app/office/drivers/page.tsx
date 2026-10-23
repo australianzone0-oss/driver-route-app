@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Modal } from "@/components/Modal";
+import { RESOURCE_TABS, SubTabs } from "@/components/SubTabs";
 import { api, useApi, useMe } from "@/lib/api";
 import { formatPhone } from "@/lib/phone";
 import type { Driver, Me, Vehicle } from "@/lib/types";
@@ -36,7 +37,8 @@ function Drivers() {
   return (
     <div className="min-h-dvh">
       <AppHeader me={me} />
-      <main className="mx-auto max-w-5xl space-y-4 px-4 py-4">
+      <main className="mx-auto max-w-6xl space-y-4 px-4 py-4">
+        <SubTabs tabs={RESOURCE_TABS} />
         {welcome && list.length === 0 && (
           <div className="card border-l-4 border-brand-600 p-4">
             <p className="font-semibold">Welcome to RouteRun</p>

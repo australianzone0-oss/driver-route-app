@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { handler, HttpError, requireUser } from "@/lib/server/auth";
 import { query, transaction } from "@/lib/server/db";
-import { insertJob, loadJobs, type NewJobInput } from "@/lib/server/jobs";
+import { insertJob, loadJobs, readPrice, type NewJobInput } from "@/lib/server/jobs";
+import { checkCustomer } from "@/lib/server/records";
 
 /** Office sees every job in the company; a driver sees their own. */
 export const GET = handler(async () => {
@@ -34,7 +35,21 @@ export const POST = handler(async (req: Request) => {
     if (!ok.length) throw new HttpError(400, "Choose an active driver.");
   }
 
+  // Only the office links customers, containers and prices.
+  const office = u.role === "admin";
+  const customerId = office && b.customerId ? String(b.customerId) : null;
+  const containerId = office && b.containerId ? String(b.containerId) : null;
+  if (office) {
+    await checkCustomer(u.companyId, customerId);
+    if (containerId && !(await query("select 1 from containers where id = $1 and company_id = $2", [containerId, u.companyId])).length) {
+      throw new HttpError(400, "That container doesn't exist.");
+    }
+  }
+
   const input: NewJobInput = {
+    customerId,
+    containerId,
+    price: office ? readPrice(b.price) : null,
     reference: b.reference ? String(b.reference).trim() : undefined,
     customerName: String(b.customerName).trim(),
     customerEmail: b.customerEmail ? String(b.customerEmail).trim() : undefined,

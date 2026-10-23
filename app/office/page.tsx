@@ -1,181 +1,120 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { api, useApi, useMe } from "@/lib/api";
-import type { Driver, Job, Vehicle } from "@/lib/types";
+import { dayLabel, TimeChart } from "@/components/Charts";
+import { Tile } from "@/components/Tile";
+import { useApi, useMe } from "@/lib/api";
+import { money } from "@/lib/records";
 
-const statusStyle: Record<Job["status"], string> = {
-  pending: "bg-slate-100 text-slate-700",
-  in_progress: "bg-amber-100 text-amber-800",
-  completed: "bg-emerald-100 text-emerald-800",
+type Dash = {
+  jobs: { pending: number; inProgress: number; completedToday: number; driversOnRoad: number; activeDrivers: number };
+  containers: { held: number; dehireDue: number; dehireOverdue: number; atWharf: number; active: number };
+  finance: { notInvoiced: number; notInvoicedValue: number; unpaid: number; overdue: number; overdueValue: number; drafts: number };
+  customers: { creditHold: number; active: number };
+  pickups: { date: string; count: number }[];
+  dropoffs: { date: string; count: number }[];
+  dehires: { id: string; containerNumber: string; dehireDate: string; customerName: string | null }[];
+  recent: { id: string; customerName: string; driverName: string; completedAt: string }[];
 };
-const statusLabel: Record<Job["status"], string> = { pending: "Pending", in_progress: "In progress", completed: "Completed" };
 
-export default function Office() {
+export default function Dashboard() {
   const me = useMe("admin");
-  const jobsApi = useApi<{ jobs: Job[] }>(me ? "/api/jobs" : null, 15000);
-  const driversApi = useApi<{ drivers: Driver[] }>(me ? "/api/drivers" : null);
-  const vehiclesApi = useApi<{ vehicles: Vehicle[] }>(me ? "/api/vehicles" : null);
-  const jobs = useMemo(() => jobsApi.data?.jobs ?? [], [jobsApi.data]);
-  const allDrivers = driversApi.data?.drivers ?? [];
-  const drivers = allDrivers.filter((d) => d.active);
-  const nameOf = (id: string) => allDrivers.find((d) => d.id === id)?.name ?? "Unknown driver";
-  const regoOf = (id: string | null) => vehiclesApi.data?.vehicles.find((v) => v.id === id)?.rego;
-  const [error, setError] = useState<string>();
-  const [driverFilter, setDriverFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | Job["status"]>("all");
-
-  async function run(fn: () => Promise<unknown>) {
-    setError(undefined);
-    try {
-      await fn();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-    jobsApi.refresh();
-  }
-
-  const shown = useMemo(
-    () => jobs.filter((j) => (driverFilter === "all" || j.driverId === driverFilter) && (statusFilter === "all" || j.status === statusFilter)),
-    [jobs, driverFilter, statusFilter],
-  );
-
+  const dash = useApi<Dash>(me ? "/api/dashboard" : null, 60000);
   if (!me) return null;
-
-  const counts = (id: string) => {
-    const mine = jobs.filter((j) => j.driverId === id);
-    return { open: mine.filter((j) => j.status !== "completed").length, done: mine.filter((j) => j.status === "completed").length };
-  };
+  const d = dash.data;
+  const series = (rows: { date: string; count: number }[] = []) => rows.map((r) => ({ label: dayLabel(r.date), value: r.count }));
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Sydney" });
 
   return (
     <div className="min-h-dvh">
       <AppHeader me={me} />
-      <main className="mx-auto max-w-5xl space-y-4 px-4 py-4">
-        <div className="grid gap-3 sm:grid-cols-3">
-          {drivers.length === 0 && driversApi.data && (
-            <Link href="/office/drivers" className="card p-4 text-sm text-slate-600 hover:bg-slate-50">
-              <p className="font-semibold text-slate-800">No drivers yet</p>
-              Add drivers before creating jobs →
-            </Link>
-          )}
-          {drivers.map((d) => {
-            const c = counts(d.id);
-            return (
-              <div key={d.id} className="card p-4">
-                <p className="text-sm font-semibold">{d.name}</p>
-                <p className="text-xs text-slate-500">{regoOf(d.vehicleId) ? `🚚 ${regoOf(d.vehicleId)}` : "No vehicle"}</p>
-                <p className="mt-1 text-2xl font-bold">
-                  {c.open} <span className="text-sm font-medium text-slate-500">open</span>
-                </p>
-                <p className="text-xs text-slate-500">{c.done} completed</p>
-              </div>
-            );
-          })}
-          <Link href="/jobs/new" className="card flex items-center justify-center p-4 font-semibold text-brand-600 hover:bg-brand-50">
+      <main className="mx-auto max-w-6xl space-y-4 px-4 py-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h1 className="text-xl font-bold">Dashboard</h1>
+          <Link href="/jobs/new" className="btn-primary py-2">
             + New job
           </Link>
         </div>
+        {dash.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{dash.error}</p>}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <select className="field w-auto" value={driverFilter} onChange={(e) => setDriverFilter(e.target.value)}>
-            <option value="all">All drivers</option>
-            {drivers.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          <select className="field w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In progress</option>
-            <option value="completed">Completed</option>
-          </select>
-          <div className="ml-auto flex gap-2">
-            <button
-              className="btn-ghost py-2"
-              disabled={!drivers.length}
-              onClick={() => run(() => api("/api/jobs/sample", { body: { driverId: driverFilter === "all" ? drivers[0].id : driverFilter } }))}
-            >
-              Load sample jobs
-            </button>
-          </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Tile
+            label="Dehire reminders"
+            value={d ? String(d.containers.dehireDue) : "–"}
+            sub={d?.containers.dehireOverdue ? `⚠ ${d.containers.dehireOverdue} overdue` : "Due in the next 3 days"}
+            tone={d?.containers.dehireOverdue ? "red" : "blue"}
+            href="/office/containers"
+          />
+          <Tile
+            label="Completed jobs not invoiced"
+            value={d ? String(d.finance.notInvoiced) : "–"}
+            sub={d ? money(d.finance.notInvoicedValue) : undefined}
+            tone="green"
+            href="/office/finance"
+          />
+          <Tile label="Customers on credit hold" value={d ? String(d.customers.creditHold) : "–"} sub={d ? `of ${d.customers.active} active` : undefined} tone="green" href="/office/customers" />
+          <Tile label="Held containers" value={d ? String(d.containers.held) : "–"} sub={d ? `${d.containers.atWharf} at the wharf` : undefined} tone="blue" href="/office/containers" />
         </div>
 
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <div className="grid gap-3 lg:grid-cols-2">
+          <section className="card p-4">
+            <h2 className="text-sm font-bold">Wharf pickups, next 7 days</h2>
+            {d && <TimeChart data={series(d.pickups)} kind="bar" label="Wharf pickups per day for the next 7 days" />}
+          </section>
+          <section className="card p-4">
+            <h2 className="text-sm font-bold">Wharf drop-offs, next 7 days</h2>
+            {d && <TimeChart data={series(d.dropoffs)} kind="bar" label="Wharf drop-offs per day for the next 7 days" />}
+          </section>
+        </div>
 
-        {shown.length === 0 ? (
-          <div className="card p-8 text-center text-sm text-slate-500">No jobs to show.</div>
-        ) : (
-          <ul className="space-y-2">
-            {shown.map((j) => {
-              const drop = j.stops.find((s) => s.type === "dropoff");
-              const pickup = j.stops.find((s) => s.type === "pickup");
-              return (
-                <li key={j.id} className="card p-4">
-                  <div className="flex flex-wrap items-start gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold">{j.customerName}</span>
-                        {j.reference && <span className="text-xs text-slate-500">Ref {j.reference}</span>}
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyle[j.status]}`}>{statusLabel[j.status]}</span>
-                        {j.createdBy === "driver" && <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">Added by driver</span>}
-                      </div>
-                      {pickup && (
-                        <p className="mt-1 truncate text-sm text-slate-600">
-                          <span className="font-medium text-amber-700">From</span> {pickup.address} {pickup.status === "done" && "✓"}
-                        </p>
-                      )}
-                      {drop && (
-                        <p className="truncate text-sm text-slate-600">
-                          <span className="font-medium text-brand-700">To</span> {drop.address} {drop.status === "done" && "✓"}
-                        </p>
-                      )}
-                      {drop?.completedAt && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          Completed {new Date(drop.completedAt).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" })}
-                          {drop.receivedBy && ` · received by ${drop.receivedBy}`}
-                          {drop.signature && " · signed"}
-                          {drop.photo && " · photo"}
-                        </p>
-                      )}
-                      {j.notices.length > 0 && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          {j.notices.map((n) => `${n.channel === "email" ? "Email" : "SMS"} to ${n.to}: ${n.ok ? (n.demo ? "demo" : "sent") : "failed"}`).join(" · ")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        className="field w-auto py-1.5 text-sm"
-                        value={j.driverId}
-                        disabled={j.status === "completed"}
-                        onChange={(e) => run(() => api(`/api/jobs/${j.id}`, { method: "PATCH", body: { driverId: e.target.value } }))}
-                        aria-label="Assigned driver"
-                      >
-                        {!drivers.some((d) => d.id === j.driverId) && <option value={j.driverId}>{nameOf(j.driverId)}</option>}
-                        {drivers.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="rounded-lg px-2 py-1.5 text-sm text-slate-400 hover:bg-red-50 hover:text-red-600"
-                        onClick={() => confirm(`Delete job for ${j.customerName}?`) && run(() => api(`/api/jobs/${j.id}`, { method: "DELETE" }))}
-                        aria-label="Delete job"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Tile label="Jobs waiting" value={d ? String(d.jobs.pending) : "–"} href="/office/jobs" />
+          <Tile label="In progress" value={d ? String(d.jobs.inProgress) : "–"} sub={d ? `${d.jobs.driversOnRoad} of ${d.jobs.activeDrivers} drivers on the road` : undefined} href="/office/jobs" />
+          <Tile label="Completed today" value={d ? String(d.jobs.completedToday) : "–"} href="/office/jobs" />
+          <Tile
+            label="Unpaid invoices"
+            value={d ? money(d.finance.unpaid) : "–"}
+            sub={d?.finance.overdue ? `⚠ ${d.finance.overdue} overdue (${money(d.finance.overdueValue)})` : d ? `${d.finance.drafts} drafts` : undefined}
+            tone={d?.finance.overdue ? "red" : "slate"}
+            href="/office/finance"
+          />
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          <section className="card p-4">
+            <h2 className="mb-2 text-sm font-bold">Dehire due</h2>
+            {d && d.dehires.length === 0 && <p className="py-4 text-center text-sm text-slate-500">No empties due back in the next 3 days.</p>}
+            <ul className="divide-y divide-slate-100 text-sm">
+              {d?.dehires.map((k) => (
+                <li key={k.id} className="flex justify-between gap-2 py-2">
+                  <span>
+                    <span className="font-mono font-semibold">{k.containerNumber}</span>
+                    {k.customerName && <span className="text-slate-500"> · {k.customerName}</span>}
+                  </span>
+                  <span className={k.dehireDate < today ? "font-semibold text-red-600" : "text-slate-600"}>
+                    {k.dehireDate < today && "⚠ "}
+                    {dayLabel(k.dehireDate)}
+                  </span>
                 </li>
-              );
-            })}
-          </ul>
-        )}
+              ))}
+            </ul>
+          </section>
+          <section className="card p-4">
+            <h2 className="mb-2 text-sm font-bold">Recently completed</h2>
+            {d && d.recent.length === 0 && <p className="py-4 text-center text-sm text-slate-500">No completed jobs yet.</p>}
+            <ul className="divide-y divide-slate-100 text-sm">
+              {d?.recent.map((j) => (
+                <li key={j.id} className="flex justify-between gap-2 py-2">
+                  <span>
+                    {j.customerName} <span className="text-slate-500">· {j.driverName}</span>
+                  </span>
+                  <span className="text-slate-600">{new Date(j.completedAt).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </main>
     </div>
   );

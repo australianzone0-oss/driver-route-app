@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^1.1.0",
     "@electric-sql/pglite": "^0.5.11",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.468.0",
     "next": "^15.5.28",
     "nodemailer": "^7.0.13",
     "postgres": "^3.4.9",

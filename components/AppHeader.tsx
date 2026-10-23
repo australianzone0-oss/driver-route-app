@@ -1,16 +1,30 @@
 "use client";
 
+import {
+  BarChart3, Boxes, ClipboardList, DollarSign, FileText, Gauge, Settings, Truck, Users, Wrench, type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "@/lib/api";
 import type { Me } from "@/lib/types";
 
-const officeTabs = [
-  { href: "/office", label: "Jobs" },
-  { href: "/office/drivers", label: "Drivers" },
-  { href: "/office/vehicles", label: "Vehicles" },
-  { href: "/office/account", label: "Account" },
+const officeTabs: { href: string; label: string; icon: LucideIcon; also?: string[] }[] = [
+  { href: "/office", label: "Dashboard", icon: Gauge },
+  { href: "/office/jobs", label: "Jobs", icon: ClipboardList },
+  { href: "/office/customers", label: "Customers", icon: Users },
+  { href: "/office/containers", label: "Containers", icon: Boxes },
+  { href: "/office/drivers", label: "Resources", icon: Truck, also: ["/office/vehicles"] },
+  { href: "/office/finance", label: "Finance", icon: DollarSign },
+  { href: "/office/reports", label: "Reports", icon: FileText },
+  { href: "/office/tools", label: "Tools", icon: Wrench },
+  { href: "/office/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/office/settings", label: "Settings", icon: Settings },
 ];
+
+function isActive(path: string, t: (typeof officeTabs)[number]) {
+  if (t.href === "/office") return path === "/office";
+  return [t.href, ...(t.also ?? [])].some((h) => path === h || path.startsWith(`${h}/`));
+}
 
 export function AppHeader({ me, title, back }: { me: Me; title?: string; back?: string }) {
   const router = useRouter();
@@ -19,7 +33,7 @@ export function AppHeader({ me, title, back }: { me: Me; title?: string; back?: 
 
   return (
     <header className="sticky top-0 z-[1000] bg-brand-700 text-white shadow">
-      <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
         {back ? (
           <Link href={back} className="-ml-1 rounded-lg px-2 py-1 text-lg hover:bg-white/10" aria-label="Back">
             ←
@@ -39,16 +53,21 @@ export function AppHeader({ me, title, back }: { me: Me; title?: string; back?: 
         </div>
       </div>
       {showTabs && (
-        <nav className="mx-auto flex max-w-5xl gap-1 px-3 pb-2">
-          {officeTabs.map((t) => (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${path === t.href ? "bg-white text-brand-700" : "text-white/85 hover:bg-white/10"}`}
-            >
-              {t.label}
-            </Link>
-          ))}
+        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
+          {officeTabs.map((t) => {
+            const on = isActive(path, t);
+            return (
+              <Link
+                key={t.href}
+                href={t.href}
+                aria-current={on ? "page" : undefined}
+                className={`flex min-w-[4.75rem] shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-xs font-medium ${on ? "bg-white text-brand-700" : "text-white/85 hover:bg-white/10"}`}
+              >
+                <t.icon className="h-5 w-5" aria-hidden />
+                {t.label}
+              </Link>
+            );
+          })}
         </nav>
       )}
     </header>

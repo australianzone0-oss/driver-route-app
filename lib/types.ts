@@ -35,6 +35,10 @@ export type Job = {
   createdBy: "driver" | "office";
   createdAt: string;
   status: JobStatus;
+  customerId?: string;
+  containerId?: string;
+  price?: number; // ex GST
+  invoiceId?: string;
   stops: Stop[]; // optional pickup, then one drop-off
   attachments: Attachment[];
   notices: Notice[];

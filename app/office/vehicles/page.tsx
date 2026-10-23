@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Modal } from "@/components/Modal";
+import { RESOURCE_TABS, SubTabs } from "@/components/SubTabs";
 import { api, useApi, useMe } from "@/lib/api";
 import type { Driver, Vehicle } from "@/lib/types";
 
@@ -21,7 +22,8 @@ export default function Vehicles() {
   return (
     <div className="min-h-dvh">
       <AppHeader me={me} />
-      <main className="mx-auto max-w-5xl space-y-4 px-4 py-4">
+      <main className="mx-auto max-w-6xl space-y-4 px-4 py-4">
+        <SubTabs tabs={RESOURCE_TABS} />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold">Vehicles</h1>
