@@ -112,6 +112,12 @@ export function member(table: string, fields: FieldSpec[], hooks: Omit<Hooks, "o
 }
 
 /** Throws unless the customer belongs to the company. */
+export async function checkDriver(companyId: string, driverId: unknown) {
+  if (!driverId) return;
+  const rows = await query("select 1 from users where id = $1 and company_id = $2 and role = 'driver'", [String(driverId), companyId]);
+  if (!rows.length) throw new HttpError(400, "That driver doesn't exist.");
+}
+
 export async function checkCustomer(companyId: string, customerId: unknown) {
   if (!customerId) return;
   const rows = await query("select 1 from customers where id = $1 and company_id = $2", [String(customerId), companyId]);

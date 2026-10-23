@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Modal } from "@/components/Modal";
 import { RecordForm } from "@/components/RecordForm";
 import { api, useApi, useMe } from "@/lib/api";
+import type { Driver } from "@/lib/types";
 import { CONTAINER_STATUS, STATUS_COLOR, containerFields, containerQuickFields, type Container, type Customer } from "@/lib/records";
 
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Sydney" });
@@ -18,6 +19,9 @@ export default function Containers() {
   const me = useMe("admin");
   const list = useApi<{ items: Container[] }>(me ? "/api/containers" : null);
   const customers = useApi<{ items: Customer[] }>(me ? "/api/customers" : null);
+  const driversApi = useApi<{ drivers: Driver[] }>(me ? "/api/drivers" : null);
+  const allDrivers = driversApi.data?.drivers ?? [];
+  const drivers = allDrivers.filter((d) => d.active);
   const [editing, setEditing] = useState<Container | "new" | null>(null);
   const [quick, setQuick] = useState<Container | null>(null);
   const [q, setQ] = useState("");
@@ -37,8 +41,8 @@ export default function Containers() {
 
   if (!me) return null;
 
-  async function move(k: Container, status: string) {
-    await api(`/api/containers/${k.id}`, { method: "PATCH", body: { status } }).catch((e) => alert(e.message));
+  async function patch(k: Container, body: Partial<Container>) {
+    await api(`/api/containers/${k.id}`, { method: "PATCH", body }).catch((e) => alert(e.message));
     list.refresh();
   }
 
@@ -77,6 +81,7 @@ export default function Containers() {
                   <th className="px-4 py-3">Container</th>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Where</th>
+                  <th className="px-4 py-3">Driver</th>
                   <th className="px-4 py-3">Job</th>
                   <th className="px-4 py-3">Wharf</th>
                   <th className="px-4 py-3">Dehire by</th>
@@ -115,7 +120,7 @@ export default function Containers() {
                           aria-label={`Where is ${k.containerNumber}`}
                           className={`cursor-pointer rounded-full border-0 py-1 pl-3 pr-7 text-xs font-semibold ring-1 ${STATUS_COLOR[k.status] ?? ""}`}
                           value={k.status}
-                          onChange={(e) => move(k, e.target.value)}
+                          onChange={(e) => patch(k, { status: e.target.value })}
                         >
                           {CONTAINER_STATUS.map((o) => (
                             <option key={o.value} value={o.value}>{o.label}</option>
@@ -128,6 +133,21 @@ export default function Containers() {
                         )}
                         {k.vessel && <p className="mt-1 text-xs text-slate-500">{[k.vessel, k.voyage].filter(Boolean).join(" / ")}</p>}
                         {k.emptyPark && <p className="text-xs text-slate-500">Empty park: {k.emptyPark}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          aria-label={`Driver for ${k.containerNumber}`}
+                          className={`cursor-pointer rounded-lg border-0 py-1 pl-2 pr-7 text-xs ring-1 ${k.driverId ? "bg-brand-50 font-semibold text-brand-700 ring-brand-200" : "bg-white text-slate-500 ring-slate-200"}`}
+                          value={k.driverId ?? ""}
+                          onChange={(e) => patch(k, { driverId: e.target.value || null })}
+                        >
+                          <option value="">Not allocated</option>
+                          {allDrivers
+                            .filter((d) => d.active || d.id === k.driverId)
+                            .map((d) => (
+                              <option key={d.id} value={d.id}>{d.name}</option>
+                            ))}
+                        </select>
                       </td>
                       <td className="px-4 py-3 text-xs">
                         {k.jobDate ? (
@@ -171,6 +191,7 @@ export default function Containers() {
           <RecordForm
             fields={containerQuickFields}
             initial={quick}
+            drivers={drivers}
             submitLabel="Save"
             onSubmit={async (body) => {
               await api(`/api/containers/${quick.id}`, { method: "PATCH", body });
@@ -187,6 +208,7 @@ export default function Containers() {
             fields={containerFields}
             initial={editing === "new" ? null : editing}
             customers={(customers.data?.items ?? []).filter((c) => c.active)}
+            drivers={drivers}
             submitLabel={editing === "new" ? "Add container" : "Save changes"}
             onSubmit={async (body) => {
               if (editing === "new") await api("/api/containers", { body });

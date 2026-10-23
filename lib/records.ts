@@ -2,7 +2,7 @@
  * Field lists for simple office records. The same list drives the form on the
  * page and the validation and columns on the server.
  */
-export type FieldType = "text" | "email" | "tel" | "number" | "money" | "date" | "bool" | "select" | "textarea" | "customer" | "address" | "time";
+export type FieldType = "text" | "email" | "tel" | "number" | "money" | "date" | "bool" | "select" | "textarea" | "customer" | "address" | "time" | "driver";
 
 export type FieldSpec = {
   key: string;
@@ -81,6 +81,7 @@ export type Container = {
   edoPin: string | null;
   jobDate: string | null;
   jobTime: string | null;
+  driverId: string | null;
   notes: string | null;
 };
 
@@ -106,6 +107,7 @@ export const containerFields: FieldSpec[] = [
   { key: "status", col: "status", label: "Where is it", type: "select", options: CONTAINER_STATUS },
   { key: "jobDate", col: "job_date", label: "Job date", type: "date", half: true },
   { key: "jobTime", col: "job_time", label: "Job time", type: "time", half: true },
+  { key: "driverId", col: "driver_id", label: "Driver", type: "driver" },
   { key: "wharf", col: "wharf", label: "Wharf", type: "text", half: true, placeholder: "e.g. Patrick Port Botany" },
   { key: "edoPin", col: "edo_pin", label: "EDO PIN", type: "text", half: true },
   { key: "vessel", col: "vessel", label: "Vessel", type: "text", half: true },
@@ -125,7 +127,7 @@ export const containerFields: FieldSpec[] = [
 ];
 
 /** The fields in the quick editor that opens from a container's details line. */
-const QUICK = ["size", "containerType", "fullEmpty", "movement", "wharf", "emptyPark", "weightKg", "doorDirection", "edoPin", "jobDate", "jobTime"];
+const QUICK = ["size", "containerType", "fullEmpty", "movement", "wharf", "emptyPark", "weightKg", "doorDirection", "edoPin", "jobDate", "jobTime", "driverId"];
 export const containerQuickFields = QUICK.map((k) => containerFields.find((f) => f.key === k)!);
 
 /** Pill colours for each place a container can be. */

@@ -154,6 +154,7 @@ alter table containers add column if not exists door_direction text;   -- rear o
 alter table containers add column if not exists edo_pin text;          -- release PIN from the electronic delivery order
 alter table containers add column if not exists job_date date;
 alter table containers add column if not exists job_time text;         -- HH:MM
+alter table containers add column if not exists driver_id uuid references users on delete set null;
 
 create table if not exists invoices (
   id uuid primary key default gen_random_uuid(),
