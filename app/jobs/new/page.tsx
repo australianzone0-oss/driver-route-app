@@ -53,6 +53,12 @@ export default function NewJob() {
     setCustomerEmail(c.email ?? "");
     setCustomerPhone(c.phone ?? "");
     if (c.defaultRate != null && !price) setPrice(String(c.defaultRate));
+    // Start the drop-off at the customer's delivery address.
+    const to = c.deliveryAddress || c.address;
+    if (to && !dropoff.address) {
+      setDropoff({ address: to, location: null });
+      geocodeFirst(to).then((g) => g && setDropoff((d) => (d.address === to ? { address: to, location: { lat: g.lat, lng: g.lng } } : d)));
+    }
   }
   const chosen = customers.find((c) => c.id === customerId);
 
@@ -68,8 +74,8 @@ export default function NewJob() {
       f.pickupAddress ? geocodeFirst(f.pickupAddress) : null,
       f.dropoffAddress ? geocodeFirst(f.dropoffAddress) : null,
     ]);
-    if (f.pickupAddress) setPickup({ address: p?.label ?? f.pickupAddress, location: p ? { lat: p.lat, lng: p.lng } : null });
-    if (f.dropoffAddress) setDropoff({ address: d?.label ?? f.dropoffAddress, location: d ? { lat: d.lat, lng: d.lng } : null });
+    if (f.pickupAddress) setPickup({ address: f.pickupAddress, location: p ? { lat: p.lat, lng: p.lng } : null });
+    if (f.dropoffAddress) setDropoff({ address: f.dropoffAddress, location: d ? { lat: d.lat, lng: d.lng } : null });
   }
 
   async function save(e: React.FormEvent) {
