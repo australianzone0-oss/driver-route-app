@@ -57,18 +57,29 @@ export function useApi<T>(path: string | null, pollMs?: number) {
 
 const PORTAL_KEY = "routerun:portal";
 
-export function rememberPortal(slug: string) {
+/** Remembers the company this device last used, so its name is filled in next time. */
+export function rememberPortal(slug: string, name?: string) {
   try {
-    localStorage.setItem(PORTAL_KEY, slug);
+    const keep = name ?? (lastCompany()?.slug === slug ? lastCompany()?.name : undefined);
+    localStorage.setItem(PORTAL_KEY, JSON.stringify({ slug, name: keep ?? null }));
   } catch {}
 }
 
-export function lastPortal(): string | null {
+export function lastCompany(): { slug: string; name: string | null } | null {
   try {
-    return localStorage.getItem(PORTAL_KEY);
+    const raw = localStorage.getItem(PORTAL_KEY);
+    if (!raw) return null;
+    // Older versions stored just the portal code.
+    if (!raw.startsWith("{")) return { slug: raw, name: null };
+    const v = JSON.parse(raw);
+    return typeof v?.slug === "string" ? { slug: v.slug, name: typeof v.name === "string" ? v.name : null } : null;
   } catch {
     return null;
   }
+}
+
+export function lastPortal(): string | null {
+  return lastCompany()?.slug ?? null;
 }
 
 /**

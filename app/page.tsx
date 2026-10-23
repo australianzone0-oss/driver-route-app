@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, lastPortal } from "@/lib/api";
-import { slugify } from "@/lib/phone";
+import { api, lastCompany } from "@/lib/api";
 import type { Me } from "@/lib/types";
 
 export default function Home() {
   const router = useRouter();
-  const [code, setCode] = useState("");
+  const [company, setCompany] = useState("");
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
 
   // Already signed in, or used a portal on this device before: go straight there.
   useEffect(() => {
@@ -17,8 +18,8 @@ export default function Home() {
       .then(({ me }) => {
         if (me) router.replace(me.role === "admin" ? "/office" : "/run");
         else {
-          const slug = lastPortal();
-          if (slug) setCode(slug);
+          const last = lastCompany();
+          if (last) setCompany(last.name ?? last.slug);
         }
       })
       .catch(() => {});
@@ -36,31 +37,35 @@ export default function Home() {
 
       <form
         className="card p-5"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          const slug = slugify(code);
-          if (slug) router.push(`/c/${slug}`);
+          setBusy(true);
+          setError(undefined);
+          try {
+            const c = await api<{ slug: string }>(`/api/companies?find=${encodeURIComponent(company.trim())}`);
+            router.push(`/c/${c.slug}`);
+          } catch (err) {
+            setError((err as Error).message);
+            setBusy(false);
+          }
         }}
       >
         <h2 className="font-semibold">Log in to your company</h2>
-        <label className="label mt-3" htmlFor="code">
-          Company portal
+        <label className="label mt-3" htmlFor="company">
+          Company name
         </label>
-        <div className="flex items-center rounded-xl border border-slate-300 bg-white focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
-          <span className="pl-3 text-sm text-slate-400">/c/</span>
-          <input
-            id="code"
-            className="w-full rounded-xl bg-transparent px-1 py-2.5 text-[15px] outline-none"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="your-company"
-            autoCapitalize="none"
-            autoCorrect="off"
-          />
-        </div>
-        <p className="mt-1 text-xs text-slate-500">Your office gives you this. Drivers log in with their mobile number.</p>
-        <button className="btn-primary mt-4 w-full" disabled={!slugify(code)}>
-          Continue
+        <input
+          id="company"
+          className="field"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          placeholder="e.g. Harbour Haulage"
+          autoComplete="organization"
+        />
+        <p className="mt-1 text-xs text-slate-500">Drivers and office staff both start here. Drivers then log in with their mobile number.</p>
+        {error && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <button className="btn-primary mt-4 w-full" disabled={!company.trim() || busy}>
+          {busy ? "Finding…" : "Continue"}
         </button>
       </form>
 

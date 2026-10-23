@@ -25,7 +25,7 @@ export default function Signup() {
     setError(undefined);
     try {
       const r = await api<{ slug: string }>("/api/auth/signup", { body: { companyName, slug: portal, name, email, password } });
-      rememberPortal(r.slug);
+      rememberPortal(r.slug, companyName.trim());
       router.push("/office/drivers?welcome=1");
     } catch (err) {
       setError((err as Error).message);

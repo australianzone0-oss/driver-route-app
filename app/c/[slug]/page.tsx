@@ -21,7 +21,7 @@ export default function Portal() {
     api<{ name: string }>(`/api/companies/${slug}`)
       .then((c) => {
         setCompany(c.name);
-        rememberPortal(slug);
+        rememberPortal(slug, c.name);
       })
       .catch((e) => (e instanceof ApiError && e.status === 404 ? setCompany(null) : setLoadError((e as Error).message)));
   }, [slug]);
