@@ -6,10 +6,19 @@ import { useEffect, useState } from "react";
 import { api, lastCompany } from "@/lib/api";
 import type { Me } from "@/lib/types";
 
+type Match = { name: string; slug: string };
+type Found = { matches: Match[]; by: "email" | "name" | "suggest"; exact: boolean };
+
+function portalUrl(m: Match, by: string, q: string) {
+  const prefill = by === "email" ? `?as=office&login=${encodeURIComponent(q)}` : "";
+  return `/c/${m.slug}${prefill}`;
+}
+
 export default function Home() {
   const router = useRouter();
   const [company, setCompany] = useState("");
   const [error, setError] = useState<string>();
+  const [choices, setChoices] = useState<{ list: Match[]; exact: boolean; query: string; by: string }>();
   const [busy, setBusy] = useState(false);
 
   // Already signed in, or used a portal on this device before: go straight there.
@@ -39,20 +48,29 @@ export default function Home() {
         className="card p-5"
         onSubmit={async (e) => {
           e.preventDefault();
+          const q = company.trim();
           setBusy(true);
           setError(undefined);
+          setChoices(undefined);
           try {
-            const c = await api<{ slug: string }>(`/api/companies?find=${encodeURIComponent(company.trim())}`);
-            router.push(`/c/${c.slug}`);
+            const r = await api<Found>(`/api/companies?find=${encodeURIComponent(q)}`);
+            if (r.exact && r.matches.length === 1) return router.push(portalUrl(r.matches[0], r.by, q));
+            if (r.matches.length) setChoices({ list: r.matches, exact: r.exact, query: q, by: r.by });
+            else
+              setError(
+                r.by === "email"
+                  ? "No office login uses that email. Check it, or try your company name."
+                  : "We couldn't find that company. Check the spelling, or try your office email instead.",
+              );
           } catch (err) {
             setError((err as Error).message);
-            setBusy(false);
           }
+          setBusy(false);
         }}
       >
         <h2 className="font-semibold">Log in to your company</h2>
         <label className="label mt-3" htmlFor="company">
-          Company name
+          Company name or email
         </label>
         <input
           id="company"
@@ -62,8 +80,27 @@ export default function Home() {
           placeholder="e.g. Australian Zone"
           autoComplete="organization"
         />
-        <p className="mt-1 text-xs text-slate-500">Drivers and office staff both start here. Drivers then log in with their mobile number.</p>
+        <p className="mt-1 text-xs text-slate-500">Type your company name, or your office email. Drivers then log in with their mobile number.</p>
         {error && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {choices && (
+          <div className="mt-3">
+            <p className="text-sm font-medium text-slate-700">{choices.exact ? "Which company?" : "Did you mean:"}</p>
+            <ul className="mt-2 space-y-2">
+              {choices.list.map((m) => (
+                <li key={m.slug}>
+                  <button
+                    type="button"
+                    className="btn-ghost w-full justify-between py-2.5"
+                    onClick={() => router.push(portalUrl(m, choices.by, choices.query))}
+                  >
+                    <span>{m.name}</span>
+                    <span className="text-xs font-normal text-slate-400">/c/{m.slug}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <button className="btn-primary mt-4 w-full" disabled={!company.trim() || busy}>
           {busy ? "Finding…" : "Continue"}
         </button>

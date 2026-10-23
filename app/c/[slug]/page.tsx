@@ -17,6 +17,16 @@ export default function Portal() {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
+  // Arriving from the home page with an email or mobile number already typed in.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const as = sp.get("as");
+    if (as === "driver" || as === "office") {
+      setMethod(as);
+      setLogin(sp.get("login") ?? "");
+    }
+  }, []);
+
   useEffect(() => {
     api<{ name: string }>(`/api/companies/${slug}`)
       .then((c) => {
